@@ -1,0 +1,226 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import apiClient from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import MeetingFormModal from '../components/MeetingFormModal';
+import NotificationModal from '../components/NotificationModal';
+import qrcode from 'qrcode.react';
+import AttendanceStats from '../components/AttendanceStats'; // Import component mới
+
+const QrCodeModal = ({ isOpen, onClose, meetingId }) => {
+    const [qrCodeImage, setQrCodeImage] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (isOpen && meetingId) {
+            setLoading(true);
+            apiClient.get(`/meetings/${meetingId}/qr-code`)
+                .then(response => setQrCodeImage(response.data.qrCodeImage))
+                .catch(err => console.error("Lỗi khi tạo mã QR", err))
+                .finally(() => setLoading(false));
+        }
+    }, [isOpen, meetingId]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="bg-white p-8 rounded-lg shadow-xl" onClick={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-bold text-center text-primaryRed mb-4">Điểm danh bằng mã QR</h2>
+                <p className="text-center text-gray-600 mb-6">Sử dụng ứng dụng di động để quét mã này.</p>
+                <div className="flex justify-center">
+                    {loading ? <p>Đang tạo mã...</p> : <img src={qrCodeImage} alt="Mã QR điểm danh" />}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MeetingDetailPage = () => {
+    const { id } = useParams();
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [meeting, setMeeting] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+    const fetchMeetingDetails = useCallback(async () => {
+        try {
+            const response = await apiClient.get(`/meetings/${id}`);
+            setMeeting(response.data);
+        } catch (err) {
+            setError('Không thể tải thông tin chi tiết cuộc họp.');
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        fetchMeetingDetails();
+    }, [fetchMeetingDetails]);
+
+    const handleUpdateAttendance = async (userId, status) => {
+        try {
+            await apiClient.post(`/meetings/${id}/attendance`, { userId, status });
+            // Tải lại dữ liệu để cập nhật giao diện
+            fetchMeetingDetails(); 
+        } catch (err) {
+            alert('Cập nhật điểm danh thất bại.');
+        }
+    };
+    
+    // ... các hàm khác giữ nguyên ...
+    const handleDeleteMeeting = async () => {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa cuộc họp "${meeting.title}" không?`)) {
+            try {
+                await apiClient.delete(`/meetings/${id}`);
+                alert('Xóa cuộc họp thành công!');
+                navigate('/meetings');
+            } catch (err) {
+                alert('Xóa cuộc họp thất bại.');
+            }
+        }
+    };
+    
+    const handleSaveMeeting = (savedMeeting) => {
+        setMeeting(savedMeeting);
+    };
+
+    const handleOpenDocument = async (fileId) => {
+        if (!fileId || fileId === 'chua_co_id') {
+            alert("Tài liệu này chưa có file đính kèm.");
+            return;
+        }
+        try {
+            const response = await apiClient.get(`/meetings/${id}/documents/${fileId}/view-url`);
+            const { url } = response.data;
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                throw new Error("Không nhận được URL hợp lệ.");
+            }
+        } catch (error) {
+            alert('Không thể mở tài liệu. Vui lòng thử lại.');
+        }
+    };
+
+    const formatDateTime = (isoString) => {
+        if (!isoString) return 'Chưa xác định';
+        const date = new Date(isoString);
+        return date.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+    };
+
+    if (loading) return <div>Đang tải dữ liệu...</div>;
+    if (error) return <div className="text-red-500">{error}</div>;
+    if (!meeting) return <div>Không tìm thấy cuộc họp.</div>;
+    
+    // --- LOGIC PHÂN QUYỀN ĐƯỢC NÂNG CẤP ---
+    const canEditMeeting = user?.role === 'Admin' || (user?.role === 'Secretary' && user.managedScopes.includes(meeting.org_id));
+    const canManageAttendance = canEditMeeting || user?.userId === meeting.chairperson_id || user?.userId === meeting.meeting_secretary_id;
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'present': return <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Có mặt</span>;
+            case 'absent': return <span className="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">Vắng KP</span>;
+            case 'absent_with_reason': return <span className="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Vắng CP</span>;
+            default: return <span className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full">Chưa điểm danh</span>;
+        }
+    };
+
+
+    return (
+        <div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <div className="flex justify-between items-start mb-6 pb-6 border-b flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-primaryRed">{meeting.title}</h1>
+                        <div className="flex items-center text-gray-500 mt-2 space-x-6 flex-wrap">
+                            <span><strong>Địa điểm:</strong> {meeting.location}</span>
+                            <span><strong>Bắt đầu:</strong> {formatDateTime(meeting.start_time)}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {canManageAttendance && (
+                            <button onClick={() => setIsQrModalOpen(true)} className="px-4 py-2 font-semibold text-white bg-green-500 rounded-md hover:bg-green-600">
+                                Điểm danh bằng QR
+                            </button>
+                        )}
+                         {canEditMeeting && (
+                            <>
+                                <button onClick={() => setIsNotifyModalOpen(true)} className="px-4 py-2 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600">
+                                    Gửi Thông báo
+                                </button>
+                                <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                    Sửa
+                                </button>
+                                <button onClick={handleDeleteMeeting} className="px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">
+                                    Xóa
+                                </button>
+                            </>
+                        )}
+                        <Link to="/meetings" className="text-blue-600 hover:underline">{'< Quay lại'}</Link>
+                    </div>
+                </div>
+
+                {canManageAttendance && <AttendanceStats meetingId={id} />}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
+                    <div className="md:col-span-2">
+                        <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Chương trình nghị sự</h2>
+                        {meeting.agenda?.length > 0 ? (
+                            <div className="space-y-4">
+                                {meeting.agenda.map((item, index) => (
+                                    <div key={item.agenda_id} className="p-4 bg-gray-50 rounded-md border">
+                                        <p className="font-semibold">{index + 1}. {item.title}</p>
+                                        {item.documents?.length > 0 && (
+                                            <div className="mt-3 space-y-2">
+                                                {item.documents.map(doc => (
+                                                    <button key={doc.doc_id} onClick={() => handleOpenDocument(doc.google_drive_file_id)} className="w-full text-left flex items-center p-2 rounded-md bg-white hover:bg-blue-50 border">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                        <span className="text-blue-600">{doc.doc_name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : <p className="text-gray-500">Chưa có chương trình nghị sự.</p>}
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Người tham dự ({meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? meeting.attendees.length : 0})</h2>
+                        {meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
+                            <div className="space-y-1">
+                                {meeting.attendees.map(attendee => (
+                                    <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
+                                        <div className='flex-1'>
+                                            <p className='font-medium text-gray-800'>{attendee.full_name}</p>
+                                            <div className='mt-1'>{getStatusBadge(attendee.status)}</div>
+                                        </div>
+                                        {canManageAttendance && (
+                                             <div className="flex gap-1">
+                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'present')} className="p-1.5 rounded bg-green-200 text-green-800 hover:bg-green-300 text-xs">Có mặt</button>
+                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent')} className="p-1.5 rounded bg-red-200 text-red-800 hover:bg-red-300 text-xs">Vắng KP</button>
+                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent_with_reason')} className="p-1.5 rounded bg-yellow-200 text-yellow-800 hover:bg-yellow-300 text-xs">Vắng CP</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : <p className="text-gray-500">Chưa có người tham dự.</p>}
+                    </div>
+                </div>
+            </div>
+
+            <MeetingFormModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSave={handleSaveMeeting} initialData={meeting} />
+            <NotificationModal isOpen={isNotifyModalOpen} onClose={() => setIsNotifyModalOpen(false)} meetingId={id} />
+            <QrCodeModal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} meetingId={id} />
+        </div>
+    );
+};
+
+export default MeetingDetailPage;
+
