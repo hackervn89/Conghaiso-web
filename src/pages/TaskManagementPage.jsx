@@ -1,0 +1,171 @@
+import React, { useState, useEffect } from 'react';
+import apiClient from '../api/client';
+import TaskFormModal from '../components/TaskFormModal';
+
+const TaskManagementPage = () => {
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentTask, setCurrentTask] = useState(null);
+    
+    // States for filters
+    const [statusFilter, setStatusFilter] = useState('');
+    const [orgFilter, setOrgFilter] = useState('');
+    const [organizations, setOrganizations] = useState([]);
+
+    const fetchTasks = async () => {
+        setLoading(true);
+        try {
+            const params = {
+                // [CẬP NHẬT] Gửi đi `dynamicStatus` thay vì `status`
+                dynamicStatus: statusFilter || null,
+                orgId: orgFilter || null,
+            };
+            const response = await apiClient.get('/tasks', { params });
+            setTasks(response.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    useEffect(() => {
+        // Fetch orgs for the filter dropdown
+        apiClient.get('/organizations').then(res => {
+            const flattenOrgs = (orgs, level = 0) => {
+                let list = [];
+                orgs.forEach(org => {
+                    list.push({ ...org, level });
+                    if (org.children && org.children.length > 0) {
+                        list = list.concat(flattenOrgs(org.children, level + 1));
+                    }
+                });
+                return list;
+            };
+            setOrganizations(flattenOrgs(res.data));
+        });
+    }, []);
+
+    useEffect(() => {
+        fetchTasks();
+    }, [statusFilter, orgFilter]); // Refetch when filters change
+
+    const handleOpenModal = (task = null) => {
+        setCurrentTask(task);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setCurrentTask(null);
+        setIsModalOpen(false);
+    };
+
+    const handleSave = () => {
+        fetchTasks(); // Reload the list after saving
+        handleCloseModal();
+    };
+
+    const getDynamicStatusChip = (task) => {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Chuẩn hóa về đầu ngày để so sánh
+        const dueDate = task.due_date ? new Date(task.due_date) : null;
+        const completedAt = task.completed_at ? new Date(task.completed_at) : null;
+
+        let statusInfo = {
+            text: 'Mới',
+            style: 'bg-gray-100 text-gray-800'
+        };
+
+        if (task.status === 'completed') {
+            if (completedAt && dueDate && completedAt > dueDate) {
+                statusInfo = { text: 'Hoàn thành trễ hạn', style: 'bg-yellow-100 text-yellow-800' };
+            } else {
+                statusInfo = { text: 'Hoàn thành đúng hạn', style: 'bg-green-100 text-green-800' };
+            }
+        } else { // Chưa hoàn thành (new hoặc in_progress)
+            if (dueDate) {
+                if (now > dueDate) {
+                    statusInfo = { text: 'Trễ hạn', style: 'bg-red-100 text-red-800' };
+                } else {
+                    statusInfo = { text: 'Còn hạn', style: 'bg-blue-100 text-blue-800' };
+                }
+            } else {
+                 statusInfo = { text: 'Chưa có hạn', style: 'bg-gray-100 text-gray-800' };
+            }
+        }
+
+        return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.style}`}>{statusInfo.text}</span>;
+    };
+    
+    const formatDate = (dateString) => {
+        if (!dateString) return <span className="text-gray-400">Chưa có</span>;
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN');
+    };
+
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-primaryRed">Quản lý Công việc</h1>
+                <button onClick={() => handleOpenModal()} className="px-4 py-2 font-bold text-white bg-primaryRed rounded-md hover:bg-red-700 flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                    Giao việc mới
+                </button>
+            </div>
+
+            {/* [CẬP NHẬT] Filters với các trạng thái động */}
+            <div className="mb-4 flex items-center gap-4 bg-white p-4 rounded-md shadow-sm">
+                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md bg-white">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="on_time">Còn hạn</option>
+                    <option value="overdue">Trễ hạn</option>
+                    <option value="completed_on_time">Hoàn thành đúng hạn</option>
+                    <option value="completed_late">Hoàn thành trễ hạn</option>
+                </select>
+                <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white">
+                    <option value="">Tất cả đơn vị</option>
+                    {organizations.map(org => <option key={org.org_id} value={org.org_id}>{'\u00A0'.repeat(org.level * 4)}{org.org_name}</option>)}
+                </select>
+            </div>
+            
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <table className="min-w-full leading-normal">
+                     <thead>
+                        <tr className="bg-primaryRed text-left text-white uppercase text-sm">
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-2/5">Tên công việc</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700">Đơn vị chủ trì</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700">Người theo dõi</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 text-center">Hạn hoàn thành</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 text-center">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {loading ? (
+                             <tr><td colSpan="5" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
+                        ) : tasks.map(task => (
+                            <tr key={task.task_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
+                                <td className="px-5 py-4 border-b border-gray-200 text-sm font-semibold">{task.title}</td>
+                                <td className="px-5 py-4 border-b border-gray-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
+                                <td className="px-5 py-4 border-b border-gray-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
+                                <td className="px-5 py-4 border-b border-gray-200 text-sm text-center">{formatDate(task.due_date)}</td>
+                                <td className="px-5 py-4 border-b border-gray-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <TaskFormModal 
+                isOpen={isModalOpen} 
+                onClose={handleCloseModal} 
+                onSave={handleSave} 
+                taskData={currentTask}
+            />
+        </div>
+    );
+};
+
+export default TaskManagementPage;
+

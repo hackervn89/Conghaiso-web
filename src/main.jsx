@@ -11,7 +11,8 @@ import DashboardLayout from './layouts/DashboardLayout';
 import UserManagementPage from './pages/UserManagementPage';
 import MeetingManagementPage from './pages/MeetingManagementPage';
 import MeetingDetailPage from './pages/MeetingDetailPage';
-import OrganizationManagementPage from './pages/OrganizationManagementPage'; // <-- Import trang mới
+import OrganizationManagementPage from './pages/OrganizationManagementPage';
+import TaskManagementPage from './pages/TaskManagementPage'; // <-- IMPORT MỚI
 
 // Cấu trúc router hoàn chỉnh
 const router = createBrowserRouter([
@@ -21,28 +22,32 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <DashboardLayout />, // Sử dụng DashboardLayout làm layout chính và "cổng" bảo vệ
+    element: <DashboardLayout />,
     children: [
       {
-        path: "", // Trang mặc định
+        path: "",
         element: <DashboardPage />,
       },
       {
-        path: "users", // Trang Quản lý Người dùng
+        path: "users",
         element: <UserManagementPage />,
       },
       {
-        path: "meetings", // Trang Quản lý Cuộc họp
+        path: "meetings",
         element: <MeetingManagementPage />,
       },
       {
-        path: "meetings/:id", // Trang Chi tiết Cuộc họp
+        path: "meetings/:id",
         element: <MeetingDetailPage />,
       },
       {
-        path: "organizations", // <-- Thêm route cho trang Quản lý Cơ quan
+        path: "organizations", 
         element: <OrganizationManagementPage />,
       },
+      { // <-- ROUTE MỚI
+        path: "tasks",
+        element: <TaskManagementPage />,
+      }
     ],
   },
 ]);

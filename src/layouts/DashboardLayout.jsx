@@ -12,21 +12,21 @@ const Sidebar = ({ user, isSidebarOpen }) => (
             <NavLink to="/" end className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
                 Dashboard
             </NavLink>
+            <NavLink to="/tasks" className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
+                Quản lý Công việc
+            </NavLink>
+            <NavLink to="/meetings" className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
+                Quản lý Cuộc họp
+            </NavLink>
             {user?.role === 'Admin' && (
+              <>
                 <NavLink to="/users" className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
                     Quản lý Người dùng
                 </NavLink>
-            )}
-            {(user?.role === 'Admin' || user?.role === 'Secretary') && (
-                <NavLink to="/meetings" className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
-                    Quản lý Cuộc họp
-                </NavLink>
-            )}
-            {/* Link mới cho Quản lý Cơ quan */}
-            {user?.role === 'Admin' && (
                 <NavLink to="/organizations" className={({ isActive }) => `flex items-center px-6 py-3 text-lg ${isActive ? 'bg-red-100 text-primaryRed' : 'text-gray-700 hover:bg-gray-200'}`}>
                     Quản lý Cơ quan
                 </NavLink>
+              </>
             )}
         </nav>
     </aside>
@@ -41,14 +41,12 @@ const DashboardLayout = () => {
         return <div className="flex items-center justify-center h-screen">Đang tải...</div>;
     }
 
-    // Sau khi xác thực xong, nếu không có người dùng, tự động chuyển hướng
     if (!user) {
         return <Navigate to="/login" replace />;
     }
 
     return (
         <div className="relative min-h-screen md:flex">
-            {/* Lớp phủ cho màn hình di động */}
             {isSidebarOpen && (
                 <div 
                     className="fixed inset-0 bg-black opacity-50 z-20 md:hidden"
@@ -58,10 +56,8 @@ const DashboardLayout = () => {
 
             <Sidebar user={user} isSidebarOpen={isSidebarOpen} />
 
-            {/* Nội dung chính */}
             <div className="flex-1 flex flex-col">
                 <header className="flex justify-between items-center p-4 bg-white shadow-md">
-                    {/* Nút "Hamburger" chỉ hiển thị trên di động */}
                     <button 
                         className="text-gray-500 focus:outline-none md:hidden"
                         onClick={() => setSidebarOpen(true)}
@@ -82,7 +78,7 @@ const DashboardLayout = () => {
                     </div>
                 </header>
                 <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
-                    <Outlet /> {/* Đây là nơi nội dung của các trang con sẽ được hiển thị */}
+                    <Outlet />
                 </main>
             </div>
         </div>
@@ -90,3 +86,4 @@ const DashboardLayout = () => {
 };
 
 export default DashboardLayout;
+
