@@ -96,7 +96,7 @@ const StatCard = ({ title, value, icon, linkTo }) => {
 const DashboardPage = () => {
     const { user } = useAuth();
     const [meetings, setMeetings] = useState([]);
-    const [stats, setStats] = useState({ meetingsThisMonth: 0, totalUsers: 0, overdueTasks: 0 });
+    const [stats, setStats] = useState({ meetingsThisMonth: 0, totalUsers: 0, overdueTasks: 0, ongoingTasks: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -139,6 +139,12 @@ const DashboardPage = () => {
                     linkTo="/tasks"
                 />
                 <StatCard 
+                    title="Công việc còn hạn" 
+                    value={stats.ongoingTasks || 0} 
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+                    linkTo="/tasks"
+                />
+                <StatCard 
                     title="Cuộc họp tháng này" 
                     value={stats.meetingsThisMonth || 0} 
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>} 
@@ -151,17 +157,24 @@ const DashboardPage = () => {
                     />
                 )}
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Các cuộc họp sắp tới</h2>
-                 <div className="space-y-4">
-                    {meetings.filter(m => new Date(m.start_time) >= new Date()).slice(0, 5).length > 0 ? meetings.filter(m => new Date(m.start_time) >= new Date()).slice(0, 5).map(meeting => (
-                        <Link to={`/meetings/${meeting.meeting_id}`} key={meeting.meeting_id} className="block p-4 rounded-md hover:bg-gray-100 border transition-colors">
-                            <p className="font-bold text-gray-800">{meeting.title}</p>
-                            <div className="text-sm text-gray-500 mt-1">
-                                <span>{formatDateTime(meeting.start_time)}</span> | <span>{meeting.location}</span>
-                            </div>
-                        </Link>
-                    )) : <p>Không có cuộc họp nào sắp tới.</p>}
+            
+            {/* Phần lịch và cuộc họp */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">CÁC CUỘC HỌP SẮP TỚI</h2>
+                    <div className="space-y-4">
+                        {meetings.filter(m => new Date(m.start_time) >= new Date()).length > 0 
+                        ? meetings.filter(m => new Date(m.start_time) >= new Date()).map(meeting => (
+                            <Link to={`/meetings/${meeting.meeting_id}`} key={meeting.meeting_id} className="block p-4 rounded-md hover:bg-gray-100 border transition-colors">
+                                <p className="font-bold text-gray-800">{meeting.title}</p>
+                                <p className="text-sm text-gray-500 mt-1">{formatDateTime(meeting.start_time)}</p>
+                            </Link>
+                        )) : <p>Không có cuộc họp nào sắp tới.</p>}
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">LỊCH HỌP</h2>
+                    <Calendar meetings={meetings} />
                 </div>
             </div>
         </div>
@@ -169,22 +182,41 @@ const DashboardPage = () => {
 
     // Giao diện cho Người tham dự (Đã được phục hồi)
     const AttendeeDashboard = () => (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Các cuộc họp sắp tới</h2>
-                <div className="space-y-4">
-                    {meetings.filter(m => new Date(m.start_time) >= new Date()).length > 0 
-                    ? meetings.filter(m => new Date(m.start_time) >= new Date()).map(meeting => (
-                        <Link to={`/meetings/${meeting.meeting_id}`} key={meeting.meeting_id} className="block p-4 rounded-md hover:bg-gray-100 border transition-colors">
-                            <p className="font-bold text-gray-800">{meeting.title}</p>
-                            <p className="text-sm text-gray-500 mt-1">{formatDateTime(meeting.start_time)}</p>
-                        </Link>
-                    )) : <p>Không có cuộc họp nào sắp tới.</p>}
-                </div>
+        <div className="space-y-8">
+            {/* Phần thống kê công việc */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-primaryRed">
+                <StatCard 
+                    title="Công việc trễ hạn" 
+                    value={stats.overdueTasks || 0} 
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                    linkTo="/tasks"
+                />
+                <StatCard 
+                    title="Công việc còn hạn" 
+                    value={stats.ongoingTasks || 0} 
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+                    linkTo="/tasks"
+                />
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Lịch họp</h2>
-                <Calendar meetings={meetings} />
+
+            {/* Phần lịch và cuộc họp */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">CÁC CUỘC HỌP SẮP TỚI</h2>
+                    <div className="space-y-4">
+                        {meetings.filter(m => new Date(m.start_time) >= new Date()).length > 0 
+                        ? meetings.filter(m => new Date(m.start_time) >= new Date()).map(meeting => (
+                            <Link to={`/meetings/${meeting.meeting_id}`} key={meeting.meeting_id} className="block p-4 rounded-md hover:bg-gray-100 border transition-colors">
+                                <p className="font-bold text-gray-800">{meeting.title}</p>
+                                <p className="text-sm text-gray-500 mt-1">{formatDateTime(meeting.start_time)}</p>
+                            </Link>
+                        )) : <p>Không có cuộc họp nào sắp tới.</p>}
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">LỊCH HỌP</h2>
+                    <Calendar meetings={meetings} />
+                </div>
             </div>
         </div>
     );
@@ -192,7 +224,7 @@ const DashboardPage = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-primaryRed">Chào đồng chí, {user?.fullName}!</h1>
+                <h1 className="text-3xl font-bold text-primaryRed">Chào Đồng chí, {user?.fullName}!</h1>
                 <p className="text-gray-500 mt-1">Đây là thông tin tổng quan về các hoạt động của bạn.</p>
             </div>
             {loading ? <p>Đang tải dữ liệu dashboard...</p> : (

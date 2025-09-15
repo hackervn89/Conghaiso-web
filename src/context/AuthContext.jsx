@@ -55,13 +55,29 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const signOut = useCallback(() => {
-    console.log('[AuthContext] Đang thực hiện đăng xuất...');
+  const signOut = useCallback(async () => { // 1. Chuyển hàm thành async
+  console.log('[AuthContext] Đang thực hiện đăng xuất...');
+
+  try {
+    // 2. GỌI API ĐĂNG XUẤT TRƯỚC
+    // Endpoint này cần token để xác thực, nên phải gọi trước khi xoá token ở client
+    await apiClient.post('/auth/logout');
+    console.log('[AuthContext] Đã gửi yêu cầu xoá push token đến server.');
+
+  } catch (error) {
+    // Ngay cả khi gọi API thất bại (ví dụ: mất mạng), chúng ta vẫn muốn
+    // tiến hành đăng xuất ở phía client để người dùng không bị kẹt.
+    console.error('[AuthContext] Lỗi khi gọi API đăng xuất, nhưng vẫn tiếp tục:', error);
+  } finally {
+    // 3. DỌN DẸP PHÍA CLIENT (giống code cũ của bạn)
+    // Đặt trong finally để đảm bảo nó luôn được thực thi
+    console.log('[AuthContext] Dọn dẹp token ở client...');
     localStorage.removeItem('token');
     delete apiClient.defaults.headers.common['Authorization'];
     setUser(null);
-    console.log('[AuthContext] Đăng xuất thành công.');
-  }, []);
+    console.log('[AuthContext] Đăng xuất thành công ở client.');
+  }
+}, []);
 
   const value = { user, loading, signIn, signOut };
 

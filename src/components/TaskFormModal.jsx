@@ -3,7 +3,7 @@ import apiClient from '../api/client';
 import OrgCheckboxTree from './OrgCheckboxTree';
 import SearchableSelect from './SearchableSelect';
 
-const TaskFormModal = ({ isOpen, onClose, onSave, taskData }) => {
+const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
     const isEditMode = !!taskData;
 
     // States for form fields
@@ -151,6 +151,35 @@ const TaskFormModal = ({ isOpen, onClose, onSave, taskData }) => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!isEditMode || !taskData.task_id) return;
+        if (window.confirm('Bạn có chắc chắn muốn xóa công việc này không?')) {
+            setLoading(true);
+            try {
+                await apiClient.delete(`/tasks/${taskData.task_id}`);
+                // API call was successful.
+                alert('Đã xoá công việc thành công.');
+                
+                // Now handle UI updates.
+                try {
+                    onDelete(taskData.task_id);
+                } catch (uiError) {
+                    console.error('Lỗi khi cập nhật danh sách công việc sau khi xóa:', uiError);
+                } finally {
+                    // Always close the modal after a successful deletion.
+                    onClose();
+                }
+
+            } catch (apiError) {
+                // This catch is for the API call
+                console.error('Lỗi API khi xóa công việc:', apiError.response);
+                alert(apiError.response?.data?.message || 'Không thể xóa công việc. Kiểm tra console để biết thêm chi tiết.');
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -220,9 +249,12 @@ const TaskFormModal = ({ isOpen, onClose, onSave, taskData }) => {
 
 
                 <div className="flex justify-between items-center mt-6 pt-4 border-t flex-shrink-0">
-                    <div>
+                    <div className="flex gap-2">
                         {isEditMode && taskData?.status !== 'completed' && (
-                             <button type="button" disabled={loading || loadingDetails} onClick={handleCompleteTask} className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-300">Hoàn thành công việc</button>
+                             <button type="button" disabled={loading || loadingDetails} onClick={handleCompleteTask} className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-300">Hoàn thành</button>
+                        )}
+                        {isEditMode && (
+                            <button type="button" disabled={loading || loadingDetails} onClick={handleDelete} className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-300">Xóa</button>
                         )}
                     </div>
                     <div className="flex gap-4">

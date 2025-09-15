@@ -46,6 +46,7 @@ const MeetingDetailPage = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+    const [isAttendeesListVisible, setIsAttendeesListVisible] = useState(true);
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
@@ -153,19 +154,19 @@ const MeetingDetailPage = () => {
                                 <button onClick={() => setIsNotifyModalOpen(true)} className="px-4 py-2 font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600">
                                     Gửi Thông báo
                                 </button>
-                                <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 font-semibold text-white bg-primaryRed rounded-md hover:bg-red-700">
                                     Sửa
                                 </button>
-                                <button onClick={handleDeleteMeeting} className="px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">
+                                <button onClick={handleDeleteMeeting} className="px-4 py-2 font-semibold text-white bg-primaryRed rounded-md hover:bg-red-700">
                                     Xóa
                                 </button>
                             </>
                         )}
-                        <Link to="/meetings" className="text-blue-600 hover:underline">{'< Quay lại'}</Link>
+                        <Link to="/meetings" className="text-primaryRed hover:underline">{'< Quay lại'}</Link>
                     </div>
                 </div>
 
-                {canManageAttendance && <AttendanceStats meetingId={id} />}
+                
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
                     <div className="md:col-span-2">
@@ -180,7 +181,7 @@ const MeetingDetailPage = () => {
                                                 {item.documents.map(doc => (
                                                     <button key={doc.doc_id} onClick={() => handleOpenDocument(doc.google_drive_file_id)} className="w-full text-left flex items-center p-2 rounded-md bg-white hover:bg-blue-50 border">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        <span className="text-blue-600">{doc.doc_name}</span>
+                                                        <span className="text-primaryRed">{doc.doc_name}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -191,26 +192,37 @@ const MeetingDetailPage = () => {
                         ) : <p className="text-gray-500">Chưa có chương trình nghị sự.</p>}
                     </div>
                     <div>
-                        <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Người tham dự ({meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? meeting.attendees.length : 0})</h2>
-                        {meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
-                            <div className="space-y-1">
-                                {meeting.attendees.map(attendee => (
-                                    <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
-                                        <div className='flex-1'>
-                                            <p className='font-medium text-gray-800'>{attendee.full_name}</p>
-                                            <div className='mt-1'>{getStatusBadge(attendee.status)}</div>
-                                        </div>
-                                        {canManageAttendance && (
-                                             <div className="flex gap-1">
-                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'present')} className="p-1.5 rounded bg-green-200 text-green-800 hover:bg-green-300 text-xs">Có mặt</button>
-                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent')} className="p-1.5 rounded bg-red-200 text-red-800 hover:bg-red-300 text-xs">Vắng KP</button>
-                                                <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent_with_reason')} className="p-1.5 rounded bg-yellow-200 text-yellow-800 hover:bg-yellow-300 text-xs">Vắng CP</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                        {canManageAttendance && <AttendanceStats meetingId={id} />}
+
+                        <div className="mt-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2">Người tham dự ({meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? meeting.attendees.length : 0})</h2>
+                                <button onClick={() => setIsAttendeesListVisible(!isAttendeesListVisible)} className="text-primaryRed hover:text-red-700 font-semibold text-sm">
+                                    {isAttendeesListVisible ? 'Ẩn danh sách' : 'Hiện danh sách'}
+                                </button>
                             </div>
-                        ) : <p className="text-gray-500">Chưa có người tham dự.</p>}
+                            {isAttendeesListVisible && (
+                                meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
+                                    <div className="space-y-1">
+                                        {meeting.attendees.map(attendee => (
+                                            <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
+                                                <div className='flex-1'>
+                                                    <p className='font-medium text-gray-800'>{attendee.full_name}</p>
+                                                    <div className='mt-1'>{getStatusBadge(attendee.status)}</div>
+                                                </div>
+                                                {canManageAttendance && (
+                                                     <div className="flex gap-1">
+                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'present')} className="p-1.5 rounded bg-green-200 text-green-800 hover:bg-green-300 text-xs">Có mặt</button>
+                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent')} className="p-1.5 rounded bg-red-200 text-red-800 hover:bg-red-300 text-xs">Vắng KP</button>
+                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent_with_reason')} className="p-1.5 rounded bg-yellow-200 text-yellow-800 hover:bg-yellow-300 text-xs">Vắng CP</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : <p className="text-gray-500">Chưa có người tham dự.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
