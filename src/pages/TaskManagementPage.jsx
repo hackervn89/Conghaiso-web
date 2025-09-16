@@ -12,7 +12,7 @@ const TaskManagementPage = () => {
     const [currentTask, setCurrentTask] = useState(null);
     
     // States for filters
-    const [statusFilter, setStatusFilter] = useState('');
+    const [selectedStatuses, setSelectedStatuses] = useState(new Set());
     const [orgFilter, setOrgFilter] = useState('');
     const [organizations, setOrganizations] = useState([]);
 
@@ -24,7 +24,7 @@ const TaskManagementPage = () => {
         setLoading(true);
         try {
             const params = {
-                dynamicStatus: statusFilter || null,
+                dynamicStatus: selectedStatuses.size > 0 ? Array.from(selectedStatuses) : null,
                 orgId: orgFilter || null,
             };
             const response = await apiClient.get('/tasks', { params });
@@ -121,9 +121,11 @@ const TaskManagementPage = () => {
         }
     };
 
+    const statusFilterString = Array.from(selectedStatuses).sort().join(',');
+
     useEffect(() => {
         fetchTasks();
-    }, [statusFilter, orgFilter]); // Refetch when filters change
+    }, [statusFilterString, orgFilter]); // Refetch when filters change
 
     const handleOpenModal = (task = null) => {
         setCurrentTask(task);
@@ -139,6 +141,23 @@ const TaskManagementPage = () => {
         fetchTasks(); // Reload the list after saving
         handleCloseModal();
     };
+
+    const handleStatusChange = (status) => {
+        const newStatuses = new Set(selectedStatuses);
+        if (newStatuses.has(status)) {
+            newStatuses.delete(status);
+        } else {
+            newStatuses.add(status);
+        }
+        setSelectedStatuses(newStatuses);
+    };
+
+    const statusOptions = [
+        { value: 'on_time', label: 'Còn hạn' },
+        { value: 'overdue', label: 'Trễ hạn' },
+        { value: 'completed_on_time', label: 'Hoàn thành đúng hạn' },
+        { value: 'completed_late', label: 'Hoàn thành trễ hạn' },        
+    ];
 
     const getDynamicStatusChip = (task) => {
         const now = new Date();
@@ -190,25 +209,37 @@ const TaskManagementPage = () => {
             </div>
 
             {/* [CẬP NHẬT] Filters với các trạng thái động */}
-            <div className="mb-4 flex items-center gap-4 bg-white p-4 rounded-md shadow-sm">
-                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md bg-white">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="on_time">Còn hạn</option>
-                    <option value="overdue">Trễ hạn</option>
-                    <option value="completed_on_time">Hoàn thành đúng hạn</option>
-                    <option value="completed_late">Hoàn thành trễ hạn</option>
-                </select>
-                <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white">
-                    <option value="">Tất cả đơn vị</option>
-                    {organizations.map(org => <option key={org.org_id} value={org.org_id}>{' '.repeat(org.level * 4)}{org.org_name}</option>)}
-                </select>
-                <button
-                    onClick={handleExport}
-                    disabled={reportLoading}
-                    className="px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400"
-                >
-                    {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc nhở'}
-                </button>
+            <div className="mb-4 bg-white p-4 rounded-md shadow-sm">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white">
+                            <option value="">Tất cả đơn vị</option>
+                            {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
+                        </select>
+                    </div>
+                    <button
+                        onClick={handleExport}
+                        disabled={reportLoading}
+                        className="px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400"
+                    >
+                        {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc nhở'}
+                    </button>
+                </div>
+                <div className="flex items-center gap-4 mt-4">
+                    <span className="text-sm font-medium text-red-700">Lọc theo trạng thái:</span>
+                    {statusOptions.map(option => (
+                        <div key={option.value} className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id={`status-${option.value}`}
+                                checked={selectedStatuses.has(option.value)}
+                                onChange={() => handleStatusChange(option.value)}
+                                className="h-4 w-4 rounded border-gray-300 text-primaryRed focus:ring-red-400"
+                            />
+                            <label htmlFor={`status-${option.value}`} className="ml-2 text-sm text-gray-700">{option.label}</label>
+                        </div>
+                    ))}
+                </div>
             </div>
             
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
