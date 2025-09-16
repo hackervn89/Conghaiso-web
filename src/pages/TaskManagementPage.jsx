@@ -74,9 +74,21 @@ const TaskManagementPage = () => {
                 })),
             }));
 
+            const orgNames = processedOrganizations.map(org => org.org_name);
+            let orgListString = '';
+            if (orgNames.length > 0) {
+                orgListString = orgNames.map((name, index) => {
+                    if (index === orgNames.length - 1) {
+                        return `- ${name}.`; // Last item gets a period
+                    }
+                    return `- ${name},`; // Other items get a comma
+                }).join('\n'); // Join with newline for line breaks
+            }
+
             const reportData = {
                 ...data,
                 organizations: processedOrganizations,
+                org_list_string: orgListString, // New field for the list of organizations
             };
 
             // Load template
