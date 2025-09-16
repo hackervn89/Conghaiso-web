@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import TaskFormModal from '../components/TaskFormModal';
+import Docxtemplater from 'docxtemplater';
+import PizZip from 'pizzip';
+import { saveAs } from 'file-saver';
 
 const TaskManagementPage = () => {
     const [tasks, setTasks] = useState([]);
@@ -13,11 +16,14 @@ const TaskManagementPage = () => {
     const [orgFilter, setOrgFilter] = useState('');
     const [organizations, setOrganizations] = useState([]);
 
+    // States for report export
+    const [reportLoading, setReportLoading] = useState(false);
+    const [reportError, setReportError] = useState(null);
+
     const fetchTasks = async () => {
         setLoading(true);
         try {
             const params = {
-                // [CẬP NHẬT] Gửi đi `dynamicStatus` thay vì `status`
                 dynamicStatus: statusFilter || null,
                 orgId: orgFilter || null,
             };
@@ -46,6 +52,62 @@ const TaskManagementPage = () => {
             setOrganizations(flattenOrgs(res.data));
         });
     }, []);
+
+    const handleExport = async () => {
+        setReportLoading(true);
+        setReportError(null);
+        try {
+            const params = {
+                status: 'on_time,overdue', // Chỉ lấy công việc còn hạn và trễ hạn
+                organizationId: orgFilter || null, // Use current organization filter
+            };
+            const response = await apiClient.get('/reports/tasks-by-organization', { params });
+            const data = response.data;
+
+            // Add org_number and format due_date
+            const processedOrganizations = data.organizations.map((org, index) => ({
+                ...org,
+                org_number: index + 1,
+                tasks: org.tasks.map(task => ({
+                    ...task,
+                    due_date: task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Chưa có',
+                })),
+            }));
+
+            const reportData = {
+                ...data,
+                organizations: processedOrganizations,
+            };
+
+            // Load template
+            const templateResponse = await fetch('/templates/Template_CV_nhacviec.docx');
+            const content = await templateResponse.arrayBuffer();
+
+            const zip = new PizZip(content);
+            const doc = new Docxtemplater(zip, {
+                paragraphLoop: true,
+                linebreaks: true,
+            });
+
+            doc.setData(reportData);
+            doc.render();
+
+            const out = doc.getZip().generate({
+                type: 'blob',
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            });
+
+            saveAs(out, 'CongVanNhacNho.docx');
+            alert('Công văn nhắc nhở đã được xuất thành công!');
+
+        } catch (err) {
+            console.error('Lỗi khi xuất công văn nhắc nhở:', err);
+            setReportError('Không thể xuất công văn nhắc nhở. Vui lòng kiểm tra console để biết chi tiết.');
+            alert('Đã xảy ra lỗi khi xuất công văn nhắc nhở.');
+        } finally {
+            setReportLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchTasks();
@@ -91,7 +153,7 @@ const TaskManagementPage = () => {
                     statusInfo = { text: 'Còn hạn', style: 'bg-blue-100 text-blue-800' };
                 }
             } else {
-                 statusInfo = { text: 'Chưa có hạn', style: 'bg-gray-100 text-gray-800' };
+                 statusInfo = { text: 'Thường xuyên', style: 'bg-gray-100 text-gray-800' };
             }
         }
 
@@ -128,6 +190,13 @@ const TaskManagementPage = () => {
                     <option value="">Tất cả đơn vị</option>
                     {organizations.map(org => <option key={org.org_id} value={org.org_id}>{'\u00A0'.repeat(org.level * 4)}{org.org_name}</option>)}
                 </select>
+                <button
+                    onClick={handleExport}
+                    disabled={reportLoading}
+                    className="px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400"
+                >
+                    {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc nhở'}
+                </button>
             </div>
             
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -168,4 +237,3 @@ const TaskManagementPage = () => {
 };
 
 export default TaskManagementPage;
-

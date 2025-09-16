@@ -12,7 +12,7 @@ import UserManagementPage from './pages/UserManagementPage';
 import MeetingManagementPage from './pages/MeetingManagementPage';
 import MeetingDetailPage from './pages/MeetingDetailPage';
 import OrganizationManagementPage from './pages/OrganizationManagementPage';
-import TaskManagementPage from './pages/TaskManagementPage'; // <-- IMPORT MỚI
+import TaskManagementPage from './pages/TaskManagementPage';
 
 // Cấu trúc router hoàn chỉnh
 const router = createBrowserRouter([
@@ -44,7 +44,7 @@ const router = createBrowserRouter([
         path: "organizations", 
         element: <OrganizationManagementPage />,
       },
-      { // <-- ROUTE MỚI
+      {
         path: "tasks",
         element: <TaskManagementPage />,
       }
