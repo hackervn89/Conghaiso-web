@@ -109,7 +109,7 @@ const TaskManagementPage = () => {
                 mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             });
 
-            saveAs(out, 'CongVanNhacNho.docx');
+            saveAs(out, 'CV đôn đốc công việc.docx');
             alert('Công văn nhắc nhở đã được xuất thành công!');
 
         } catch (err) {
@@ -200,7 +200,7 @@ const TaskManagementPage = () => {
                 </select>
                 <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white">
                     <option value="">Tất cả đơn vị</option>
-                    {organizations.map(org => <option key={org.org_id} value={org.org_id}>{'\u00A0'.repeat(org.level * 4)}{org.org_name}</option>)}
+                    {organizations.map(org => <option key={org.org_id} value={org.org_id}>{' '.repeat(org.level * 4)}{org.org_name}</option>)}
                 </select>
                 <button
                     onClick={handleExport}
