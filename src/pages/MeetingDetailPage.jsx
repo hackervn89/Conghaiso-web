@@ -6,6 +6,7 @@ import MeetingFormModal from '../components/MeetingFormModal';
 import NotificationModal from '../components/NotificationModal';
 import qrcode from 'qrcode.react';
 import AttendanceStats from '../components/AttendanceStats'; // Import component mới
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 const QrCodeModal = ({ isOpen, onClose, meetingId }) => {
     const [qrCodeImage, setQrCodeImage] = useState(null);
@@ -36,6 +37,27 @@ const QrCodeModal = ({ isOpen, onClose, meetingId }) => {
     );
 };
 
+const SummaryModal = ({ isOpen, onClose, summary, loading }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-bold text-center text-primaryRed mb-4">TÓM TẮT TÀI LIỆU</h2>
+                <h4 className="text-center text-primaryRed mb-4">Tài liệu được tóm tắt bằng AI, hãy kiểm tra lại thông tin trước khi sử dụng</h4>
+                <div className="max-h-96 overflow-y-auto">
+                    {loading ? <p>Đang tóm tắt...</p> : <p className="text-gray-700 whitespace-pre-wrap">{summary}</p>}
+                </div>
+                <div className="text-right mt-6">
+                    <button onClick={onClose} className="px-4 py-2 font-semibold text-white bg-primaryRed rounded-md hover:bg-red-700">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MeetingDetailPage = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -47,6 +69,12 @@ const MeetingDetailPage = () => {
     const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
     const [isAttendeesListVisible, setIsAttendeesListVisible] = useState(true);
+    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+    const [summaryContent, setSummaryContent] = useState('');
+    const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+    const [isSummarizing, setIsSummarizing] = useState(false); // New state for rate limiting
+    const [lastSummarizeTime, setLastSummarizeTime] = useState(0); // New state for cooldown
+    const COOLDOWN_PERIOD = 60000; // 60 seconds cooldown (to align with backend retry-after)
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
@@ -73,7 +101,6 @@ const MeetingDetailPage = () => {
         }
     };
     
-    // ... các hàm khác giữ nguyên ...
     const handleDeleteMeeting = async () => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa cuộc họp "${meeting.title}" không?`)) {
             try {
@@ -88,6 +115,45 @@ const MeetingDetailPage = () => {
     
     const handleSaveMeeting = (savedMeeting) => {
         setMeeting(savedMeeting);
+    };
+
+    const handleSummarize = async (fileId) => {
+        if (isSummarizing) {
+            alert("Đang có yêu cầu tóm tắt khác đang xử lý. Vui lòng đợi.");
+            return;
+        }
+        if (Date.now() - lastSummarizeTime < COOLDOWN_PERIOD) {
+            const remainingTime = Math.ceil((COOLDOWN_PERIOD - (Date.now() - lastSummarizeTime)) / 1000);
+            alert(`Vui lòng đợi ${remainingTime} giây trước khi tóm tắt tài liệu khác.`);
+            return;
+        }
+
+        if (!fileId || fileId === 'chua_co_id') {
+            alert("Tài liệu này chưa có file đính kèm để tóm tắt.");
+            return;
+        }
+        
+        setIsSummaryModalOpen(true);
+        setIsSummaryLoading(true);
+        setSummaryContent('');
+        setIsSummarizing(true); // Set summarizing state to true
+
+        try {
+            const response = await apiClient.get(`/meetings/${id}/documents/${fileId}/view-url`);
+            const { url } = response.data;
+            if (url) {
+                const summaryResponse = await apiClient.post('/summarize', { url });
+                setSummaryContent(summaryResponse.data.summary);
+            } else {
+                throw new Error("Không nhận được URL hợp lệ.");
+            }
+        } catch (error) {
+            setSummaryContent('Không thể tóm tắt tài liệu do máy chủ đang bận hoặc vượt quá hạn mức API. Vui lòng thử lại sau ít phút.');
+        } finally {
+            setIsSummaryLoading(false);
+            setIsSummarizing(false); // Reset summarizing state
+            setLastSummarizeTime(Date.now()); // Update last summarize time
+        }
     };
 
     const handleOpenDocument = async (fileId) => {
@@ -118,7 +184,6 @@ const MeetingDetailPage = () => {
     if (error) return <div className="text-red-500">{error}</div>;
     if (!meeting) return <div>Không tìm thấy cuộc họp.</div>;
     
-    // --- LOGIC PHÂN QUYỀN ĐƯỢC NÂNG CẤP ---
     const canEditMeeting = user?.role === 'Admin' || (user?.role === 'Secretary' && user.managedScopes.includes(meeting.org_id));
     const canManageAttendance = canEditMeeting || user?.userId === meeting.chairperson_id || user?.userId === meeting.meeting_secretary_id;
 
@@ -166,8 +231,6 @@ const MeetingDetailPage = () => {
                     </div>
                 </div>
 
-                
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
                     <div className="md:col-span-2">
                         <h2 className="text-xl font-semibold text-primaryRed border-b pb-2 mb-4">Chương trình nghị sự</h2>
@@ -179,10 +242,16 @@ const MeetingDetailPage = () => {
                                         {item.documents?.length > 0 && (
                                             <div className="mt-3 space-y-2">
                                                 {item.documents.map(doc => (
-                                                    <button key={doc.doc_id} onClick={() => handleOpenDocument(doc.google_drive_file_id)} className="w-full text-left flex items-center p-2 rounded-md bg-white hover:bg-blue-50 border">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                        <span className="text-primaryRed">{doc.doc_name}</span>
-                                                    </button>
+                                                    <div key={doc.doc_id} className="flex items-center justify-between p-2 rounded-md bg-white hover:bg-blue-50 border">
+                                                        <button onClick={() => handleOpenDocument(doc.google_drive_file_id)} className="flex items-center text-left">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primaryRed" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                            <span className="text-primaryRed">{doc.doc_name}</span>
+                                                        </button>
+                                                        <button onClick={() => handleSummarize(doc.google_drive_file_id)} disabled={isSummarizing || (Date.now() - lastSummarizeTime < COOLDOWN_PERIOD)} className="flex items-center px-3 py-1 text-sm text-white bg-purple-500 rounded-md hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                             <SparklesIcon className="h-4 w-4 mr-1" />
+                                                             Tóm tắt
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
@@ -230,6 +299,7 @@ const MeetingDetailPage = () => {
             <MeetingFormModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSave={handleSaveMeeting} initialData={meeting} />
             <NotificationModal isOpen={isNotifyModalOpen} onClose={() => setIsNotifyModalOpen(false)} meetingId={id} />
             <QrCodeModal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} meetingId={id} />
+            <SummaryModal isOpen={isSummaryModalOpen} onClose={() => setIsSummaryModalOpen(false)} summary={summaryContent} loading={isSummaryLoading} />
         </div>
     );
 };

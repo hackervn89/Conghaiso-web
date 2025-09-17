@@ -11,6 +11,7 @@
     "tailwind:init": "node ./node_modules/tailwindcss/lib/cli.js init -p"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "axios": "^1.7.2",
     "docxtemplater": "^3.66.3",
     "file-saver": "^2.0.5",
