@@ -54,70 +54,72 @@ const TaskManagementPage = () => {
     }, []);
 
     const handleExport = async () => {
-        setReportLoading(true);
-        setReportError(null);
-        try {
-            const params = {
-                status: 'on_time,overdue', // Chỉ lấy công việc còn hạn và trễ hạn
-                organizationId: orgFilter || null, // Use current organization filter
-            };
-            const response = await apiClient.get('/reports/tasks-by-organization', { params });
-            const data = response.data;
+        if (window.confirm('Bạn có muốn xuất công văn nhắc việc không?')) {
+            setReportLoading(true);
+            setReportError(null);
+            try {
+                const params = {
+                    status: 'on_time,overdue', // Chỉ lấy công việc còn hạn và trễ hạn
+                    organizationId: orgFilter || null, // Use current organization filter
+                };
+                const response = await apiClient.get('/reports/tasks-by-organization', { params });
+                const data = response.data;
 
-            // Add org_number and format due_date
-            const processedOrganizations = data.organizations.map((org, index) => ({
-                ...org,
-                org_number: index + 1,
-                tasks: org.tasks.map(task => ({
-                    ...task,
-                    due_date: task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Chưa có',
-                })),
-            }));
+                // Add org_number and format due_date
+                const processedOrganizations = data.organizations.map((org, index) => ({
+                    ...org,
+                    org_number: index + 1,
+                    tasks: org.tasks.map(task => ({
+                        ...task,
+                        due_date: task.due_date ? new Date(task.due_date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Chưa có',
+                    })),
+                }));
 
-            const orgNames = processedOrganizations.map(org => org.org_name);
-            let orgListString = '';
-            if (orgNames.length > 0) {
-                orgListString = orgNames.map((name, index) => {
-                    if (index === orgNames.length - 1) {
-                        return `- ${name}.`; // Last item gets a period
-                    }
-                    return `- ${name},`; // Other items get a comma
-                }).join('\n'); // Join with newline for line breaks
+                const orgNames = processedOrganizations.map(org => org.org_name);
+                let orgListString = '';
+                if (orgNames.length > 0) {
+                    orgListString = orgNames.map((name, index) => {
+                        if (index === orgNames.length - 1) {
+                            return `- ${name}.`; // Last item gets a period
+                        }
+                        return `- ${name},`; // Other items get a comma
+                    }).join('\n'); // Join with newline for line breaks
+                }
+
+                const reportData = {
+                    ...data,
+                    organizations: processedOrganizations,
+                    org_list_string: orgListString, // New field for the list of organizations
+                };
+
+                // Load template
+                const templateResponse = await fetch('/templates/Template_CV_nhacviec.docx');
+                const content = await templateResponse.arrayBuffer();
+
+                const zip = new PizZip(content);
+                const doc = new Docxtemplater(zip, {
+                    paragraphLoop: true,
+                    linebreaks: true,
+                });
+
+                doc.setData(reportData);
+                doc.render();
+
+                const out = doc.getZip().generate({
+                    type: 'blob',
+                    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                });
+
+                saveAs(out, 'CV đôn đốc công việc.docx');
+                alert('Công văn nhắc nhở đã được xuất thành công!');
+
+            } catch (err) {
+                console.error('Lỗi khi xuất công văn nhắc nhở:', err);
+                setReportError('Không thể xuất công văn nhắc nhở. Vui lòng kiểm tra console để biết chi tiết.');
+                alert('Đã xảy ra lỗi khi xuất công văn nhắc nhở.');
+            } finally {
+                setReportLoading(false);
             }
-
-            const reportData = {
-                ...data,
-                organizations: processedOrganizations,
-                org_list_string: orgListString, // New field for the list of organizations
-            };
-
-            // Load template
-            const templateResponse = await fetch('/templates/Template_CV_nhacviec.docx');
-            const content = await templateResponse.arrayBuffer();
-
-            const zip = new PizZip(content);
-            const doc = new Docxtemplater(zip, {
-                paragraphLoop: true,
-                linebreaks: true,
-            });
-
-            doc.setData(reportData);
-            doc.render();
-
-            const out = doc.getZip().generate({
-                type: 'blob',
-                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            });
-
-            saveAs(out, 'CV đôn đốc công việc.docx');
-            alert('Công văn nhắc nhở đã được xuất thành công!');
-
-        } catch (err) {
-            console.error('Lỗi khi xuất công văn nhắc nhở:', err);
-            setReportError('Không thể xuất công văn nhắc nhở. Vui lòng kiểm tra console để biết chi tiết.');
-            alert('Đã xảy ra lỗi khi xuất công văn nhắc nhở.');
-        } finally {
-            setReportLoading(false);
         }
     };
 
@@ -202,28 +204,28 @@ const TaskManagementPage = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-primaryRed">Quản lý Công việc</h1>
-                <button onClick={() => handleOpenModal()} className="px-4 py-2 font-bold text-white bg-primaryRed rounded-md hover:bg-red-700 flex items-center gap-2">
+                                <button onClick={() => handleOpenModal()} className="p-2 md:px-4 md:py-2 font-bold text-white bg-primaryRed rounded-md hover:bg-red-700 flex items-center gap-2">
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    Giao việc mới
+                    <span className="hidden md:inline">Giao việc mới</span>
                 </button>
             </div>
 
             {/* [CẬP NHẬT] Filters với các trạng thái động */}
             <div className="mb-4 bg-white p-4 rounded-md shadow-sm">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <button
+                        onClick={handleExport}
+                        disabled={reportLoading}
+                        className="w-full md:w-auto px-3 py-2 text-sm md:px-4 md:py-2 md:text-base font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700 flex items-center justify-center gap-2 disabled:bg-gray-400"
+                    >
+                        {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc việc'}
+                    </button>
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white w-full">
                             <option value="">Tất cả đơn vị</option>
                             {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
                         </select>
                     </div>
-                    <button
-                        onClick={handleExport}
-                        disabled={reportLoading}
-                        className="px-4 py-2 font-bold text-white bg-blue-500 rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400"
-                    >
-                        {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc nhở'}
-                    </button>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
                     <span className="text-sm font-medium text-red-700">Lọc theo trạng thái:</span>
@@ -242,12 +244,12 @@ const TaskManagementPage = () => {
                 </div>
             </div>
             
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full leading-normal">
+            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table className="min-w-full leading-normal table-fixed">
                      <thead>
                         <tr className="bg-primaryRed text-left text-white uppercase text-sm">
                             <th className="px-5 py-3 border-b-2 border-red-700 w-2/5">Tên công việc</th>
-                            <th className="px-5 py-3 border-b-2 border-red-700">Đơn vị chủ trì</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-1/5">Đơn vị chủ trì</th>
                             <th className="px-5 py-3 border-b-2 border-red-700">Người theo dõi</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 text-center">Hạn hoàn thành</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 text-center">Trạng thái</th>
@@ -257,12 +259,12 @@ const TaskManagementPage = () => {
                         {loading ? (
                              <tr><td colSpan="5" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
                         ) : tasks.map(task => (
-                            <tr key={task.task_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
-                                <td className="px-5 py-4 border-b border-gray-200 text-sm font-semibold">{task.title}</td>
-                                <td className="px-5 py-4 border-b border-gray-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
-                                <td className="px-5 py-4 border-b border-gray-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
-                                <td className="px-5 py-4 border-b border-gray-200 text-sm text-center">{formatDate(task.due_date)}</td>
-                                <td className="px-5 py-4 border-b border-gray-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
+                            <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{formatDate(task.due_date)}</td>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
                             </tr>
                         ))}
                     </tbody>
