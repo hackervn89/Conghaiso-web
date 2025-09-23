@@ -142,6 +142,14 @@ const MeetingDetailPage = () => {
             const response = await apiClient.get(`/meetings/${id}/documents/${fileId}/view-url`);
             const { url } = response.data;
             if (url) {
+                // Explicitly check if the URL is a Google Drive/Docs URL
+                if (!url.includes('drive.google.com') && !url.includes('docs.google.com')) {
+                    alert("Chức năng tóm tắt chỉ hỗ trợ các tài liệu từ Google Drive/Docs.");
+                    setIsSummaryLoading(false);
+                    setIsSummarizing(false);
+                    setLastSummarizeTime(Date.now());
+                    return;
+                }
                 const summaryResponse = await apiClient.post('/summarize', { url });
                 setSummaryContent(summaryResponse.data.summary);
             } else {
