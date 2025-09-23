@@ -213,6 +213,12 @@ const TaskManagementPage = () => {
             {/* [CẬP NHẬT] Filters với các trạng thái động */}
             <div className="mb-4 bg-white p-4 rounded-md shadow-sm">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white w-full">
+                            <option value="">Tất cả đơn vị</option>
+                            {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
+                        </select>
+                    </div>
                     <button
                         onClick={handleExport}
                         disabled={reportLoading}
@@ -220,12 +226,6 @@ const TaskManagementPage = () => {
                     >
                         {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc việc'}
                     </button>
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white w-full">
-                            <option value="">Tất cả đơn vị</option>
-                            {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
-                        </select>
-                    </div>
                 </div>
                 <div className="flex items-center gap-4 mt-4">
                     <span className="text-sm font-medium text-red-700">Lọc theo trạng thái:</span>

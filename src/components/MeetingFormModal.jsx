@@ -161,11 +161,10 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         }
     };
 
-    // --- THAY ĐỔI QUAN TRỌNG BẮT ĐẦU TỪ ĐÂY ---
+    
     // Tạo danh sách TẤT CẢ người dùng để chọn vai trò, không lọc theo người tham dự nữa
     const allUserOptions = allUsers.map(u => ({ value: u.user_id, label: u.full_name }));
-    // --- KẾT THÚC THAY ĐỔI QUAN TRỌNG ---
-
+    
     if (!isOpen) return null;
 
     return (

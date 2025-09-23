@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import MeetingFormModal from '../components/MeetingFormModal';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 const MeetingManagementPage = () => {
     const [meetings, setMeetings] = useState([]);
@@ -10,6 +11,7 @@ const MeetingManagementPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentMeeting, setCurrentMeeting] = useState(null);
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get user from auth context
 
     useEffect(() => {
         const fetchMeetings = async () => {
@@ -62,13 +64,15 @@ const MeetingManagementPage = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-primaryRed">Quản lý Cuộc họp</h1>
-                <button 
-                    onClick={() => openModal()}
-                    className="px-4 py-2 font-bold text-white bg-primaryRed rounded-md hover:bg-red-700 flex items-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    Tạo cuộc họp mới
-                </button>
+                {user?.role !== 'Attendee' && (
+                    <button 
+                        onClick={() => openModal()}
+                        className="px-4 py-2 font-bold text-white bg-primaryRed rounded-md hover:bg-red-700 flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                        Tạo cuộc họp mới
+                    </button>
+                )}
             </div>
             
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
