@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import UserSelectorWeb from './UserSelectorWeb';
-import SearchableSelect from './SearchableSelect'; // <-- Import component mới
+import SearchableSelect from './SearchableSelect';
+import TimePicker from './TimePicker'; // Import TimePicker
 
 const splitISOString = (isoString) => {
     if (!isoString) return ['', ''];
@@ -192,11 +193,17 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                         )}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian bắt đầu*</label>
-                            <div className="flex gap-2"><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="w-full p-3 border rounded-md" /><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required className="w-full p-3 border rounded-md" /></div>
+                            <div className="flex gap-2">
+                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="w-full p-3 border rounded-md" />
+                                <TimePicker value={startTime} onChange={setStartTime} />
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian kết thúc</label>
-                            <div className="flex gap-2"><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-3 border rounded-md" /><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-3 border rounded-md" /></div>
+                            <div className="flex gap-2">
+                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-3 border rounded-md" />
+                                <TimePicker value={endTime} onChange={setEndTime} />
+                            </div>
                         </div>
                         
                         {/* --- THAY ĐỔI QUAN TRỌNG: Sử dụng `allUserOptions` --- */}
