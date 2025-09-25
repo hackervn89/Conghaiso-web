@@ -4,6 +4,7 @@ import TaskFormModal from '../components/TaskFormModal';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { saveAs } from 'file-saver';
+import Pagination from '../components/Pagination'; // Import component chung
 
 const TaskManagementPage = () => {
     const [tasks, setTasks] = useState([]);
@@ -20,6 +21,10 @@ const TaskManagementPage = () => {
     const [reportLoading, setReportLoading] = useState(false);
     const [reportError, setReportError] = useState(null);
 
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [tasksPerPage] = useState(10);
+
     const fetchTasks = async () => {
         setLoading(true);
         try {
@@ -28,9 +33,11 @@ const TaskManagementPage = () => {
                 orgId: orgFilter || null,
             };
             const response = await apiClient.get('/tasks', { params });
-            setTasks(response.data);
+            setTasks(Array.isArray(response.data) ? response.data : []); // Ensure tasks is an array
+            setCurrentPage(1); // Reset to first page on new data fetch
         } catch (err) {
             console.error(err);
+            setTasks([]); // Set to empty array on error
         } finally {
             setLoading(false);
         }
@@ -199,6 +206,11 @@ const TaskManagementPage = () => {
         return date.toLocaleDateString('vi-VN');
     };
 
+    // Pagination logic
+    const indexOfLastTask = currentPage * tasksPerPage;
+    const indexOfFirstTask = indexOfLastTask - tasksPerPage;
+    const currentTasks = tasks.slice(indexOfFirstTask, indexOfLastTask);
+    const totalPages = Math.ceil(tasks.length / tasksPerPage);
 
     return (
         <div>
@@ -258,7 +270,7 @@ const TaskManagementPage = () => {
                     <tbody>
                         {loading ? (
                              <tr><td colSpan="5" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
-                        ) : tasks.map(task => (
+                        ) : currentTasks.map(task => (
                             <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
@@ -269,8 +281,13 @@ const TaskManagementPage = () => {
                         ))}
                     </tbody>
                 </table>
+                
             </div>
-
+            <Pagination 
+                    currentPage={currentPage} 
+                    totalPages={totalPages} 
+                    onPageChange={setCurrentPage} 
+            />                
             <TaskFormModal 
                 isOpen={isModalOpen} 
                 onClose={handleCloseModal} 
