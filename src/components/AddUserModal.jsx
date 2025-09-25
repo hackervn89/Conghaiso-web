@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
-import OrgCheckboxTree from './OrgCheckboxTree'; // Import component mới
+import SearchableMultiSelect from './SearchableMultiSelect';
 
 const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
     const [fullName, setFullName] = useState('');
@@ -9,14 +9,15 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
     const [password, setPassword] = useState('');
     const [position, setPosition] = useState('');
     const [role, setRole] = useState('Attendee');
-    const [selectedOrgIds, setSelectedOrgIds] = useState(new Set());
+    const [selectedOrgIds, setSelectedOrgIds] = useState([]);
+    const [organizations, setOrganizations] = useState([]);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [loading, setLoading] = useState(false);
     
     const resetForm = () => {
         setFullName(''); setUsername(''); setEmail(''); setPassword('');
-        setPosition(''); setRole('Attendee'); setSelectedOrgIds(new Set());
+        setPosition(''); setRole('Attendee'); setSelectedOrgIds([]);
         setError('');
     };
 
@@ -24,13 +25,21 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         if (isOpen) {
             resetForm();
             setSuccessMessage('');
+            apiClient.get('/organizations')
+                .then(res => {
+                    const orgOptions = res.data.map(org => ({
+                        value: org.organization_id,
+                        label: org.name
+                    }));
+                    setOrganizations(orgOptions);
+                })
+                .catch(() => {
+                    setError("Không thể tải danh sách đơn vị.");
+                });
         }
     }, [isOpen]);
 
-    const handleOrgSelectionChange = (orgId) => {
-        const newSelection = new Set(selectedOrgIds);
-        if (newSelection.has(orgId)) newSelection.delete(orgId);
-        else newSelection.add(orgId);
+    const handleSelectionChange = (newSelection) => {
         setSelectedOrgIds(newSelection);
     };
 
@@ -43,7 +52,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         try {
             const response = await apiClient.post('/users', {
                 fullName, username, email, password, position, role,
-                organizationIds: Array.from(selectedOrgIds),
+                organizationIds: selectedOrgIds,
             });
             onUserAdded(response.data.user);
             setSuccessMessage(`Đã tạo thành công người dùng: ${username}`);
@@ -99,7 +108,12 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                     </div>
                     <div className="mt-6 border-t pt-4">
                         <label className="block text-base font-semibold text-gray-800 mb-2">Chọn Cơ quan / Đơn vị</label>
-                        <OrgCheckboxTree selectedIds={selectedOrgIds} onSelectionChange={handleOrgSelectionChange} />
+                        <SearchableMultiSelect
+                            options={organizations}
+                            value={selectedOrgIds}
+                            onChange={handleSelectionChange}
+                            placeholder="Tìm kiếm và chọn đơn vị..."
+                        />
                     </div>
                     <div className="flex justify-end gap-4 mt-8 pt-4 border-t">
                         <button type="button" onClick={onClose} className="px-6 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Đóng</button>

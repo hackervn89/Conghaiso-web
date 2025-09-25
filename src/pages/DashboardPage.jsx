@@ -107,7 +107,11 @@ const DashboardPage = () => {
                     apiClient.get('/dashboard/stats')
                 ]);
                 
-                setMeetings(meetingsResponse.data);
+                const meetingsData = meetingsResponse.data;
+                const validMeetings = Array.isArray(meetingsData) ? meetingsData 
+                                    : (meetingsData && Array.isArray(meetingsData.meetings)) ? meetingsData.meetings 
+                                    : [];
+                setMeetings(validMeetings);
                 setStats(statsResponse.data);
 
             } catch (error) {
