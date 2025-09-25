@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: '/api', // Địa chỉ của server backend
+  baseURL: '/api', 
   headers: {
     'Content-Type': 'application/json',
   },
