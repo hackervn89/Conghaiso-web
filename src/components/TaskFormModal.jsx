@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../api/client';
-import OrgCheckboxTree from './OrgCheckboxTree';
+import SearchableMultiSelect from './SearchableMultiSelect';
 import SearchableSelect from './SearchableSelect';
 
 const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
@@ -15,7 +15,8 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
     const [priority, setPriority] = useState('normal');
     
     // States for selections
-    const [assignedOrgIds, setAssignedOrgIds] = useState(new Set());
+    const [assignedOrgIds, setAssignedOrgIds] = useState([]);
+    const [allOrganizations, setAllOrganizations] = useState([]);
     const [trackerIds, setTrackerIds] = useState([]);
     const [colleagues, setColleagues] = useState([]);
     const [documents, setDocuments] = useState([]);
@@ -23,19 +24,31 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
     // Other states
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [loadingDetails, setLoadingDetails] = useState(false); // State loading chi tiết
+    const [loadingDetails, setLoadingDetails] = useState(false);
     const fileInputRef = useRef(null);
-
 
     useEffect(() => {
         if (isOpen) {
-            // Luôn tải danh sách đồng nghiệp khi mở modal
+            // Tải danh sách người theo dõi và đơn vị
             apiClient.get('/users/colleagues')
                 .then(res => setColleagues(res.data.map(u => ({ value: u.user_id, label: u.full_name }))))
                 .catch(() => setError("Không thể tải danh sách người theo dõi."));
 
+            apiClient.get('/organizations').then(res => {
+                const flattenOrgs = (orgs, level = 0) => {
+                    let list = [];
+                    orgs.forEach(org => {
+                        list.push({ value: org.org_id, label: '\u00A0'.repeat(level * 4) + org.org_name });
+                        if (org.children && org.children.length > 0) {
+                            list = list.concat(flattenOrgs(org.children, level + 1));
+                        }
+                    });
+                    return list;
+                };
+                setAllOrganizations(flattenOrgs(res.data));
+            }).catch(() => setError("Không thể tải danh sách đơn vị."));
+
             if (isEditMode && taskData) {
-                // SỬA LỖI: Tải dữ liệu chi tiết từ API thay vì dùng dữ liệu tóm tắt
                 setLoadingDetails(true);
                 apiClient.get(`/tasks/${taskData.task_id}`)
                     .then(res => {
@@ -46,37 +59,27 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                         setIsDirect(details.is_direct_assignment || false);
                         setDueDate(details.due_date ? details.due_date.split('T')[0] : '');
                         setPriority(details.priority || 'normal');
-                        setAssignedOrgIds(new Set(details.assignedOrgIds || []));
+                        setAssignedOrgIds(details.assignedOrgIds || []);
                         setTrackerIds(details.trackerIds || []);
                         setDocuments(details.documents || []);
                     })
                     .catch(() => setError("Không thể tải chi tiết công việc."))
                     .finally(() => setLoadingDetails(false));
             } else {
-                // Reset form cho công việc mới
+                // Reset form
                 setTitle('');
                 setDescription('');
                 setDocumentRef('');
                 setIsDirect(false);
                 setDueDate('');
                 setPriority('normal');
-                setAssignedOrgIds(new Set());
+                setAssignedOrgIds([]);
                 setTrackerIds([]);
                 setDocuments([]);
             }
              setError('');
         }
     }, [isOpen, isEditMode, taskData]);
-
-    const handleOrgSelectionChange = (orgId) => {
-        const newSelection = new Set(assignedOrgIds);
-        if (newSelection.has(orgId)) {
-            newSelection.delete(orgId);
-        } else {
-            newSelection.add(orgId);
-        }
-        setAssignedOrgIds(newSelection);
-    };
 
     const handleFileSelectAndUpload = async (event) => {
         const files = event.target.files;
@@ -119,7 +122,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             is_direct_assignment: isDirect,
             due_date: dueDate || null,
             priority,
-            assignedOrgIds: Array.from(assignedOrgIds),
+            assignedOrgIds,
             trackerIds,
             documents,
         };
@@ -157,21 +160,17 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             setLoading(true);
             try {
                 await apiClient.delete(`/tasks/${taskData.task_id}`);
-                // API call was successful.
                 alert('Đã xoá công việc thành công.');
                 
-                // Now handle UI updates.
                 try {
                     onDelete(taskData.task_id);
                 } catch (uiError) {
                     console.error('Lỗi khi cập nhật danh sách công việc sau khi xóa:', uiError);
                 } finally {
-                    // Always close the modal after a successful deletion.
                     onClose();
                 }
 
             } catch (apiError) {
-                // This catch is for the API call
                 console.error('Lỗi API khi xóa công việc:', apiError.response);
                 alert(apiError.response?.data?.message || 'Không thể xóa công việc. Kiểm tra console để biết thêm chi tiết.');
             } finally {
@@ -226,7 +225,12 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Đơn vị chủ trì (Thực hiện)*</label>
-                            <OrgCheckboxTree selectedIds={assignedOrgIds} onSelectionChange={handleOrgSelectionChange} />
+                            <SearchableMultiSelect
+                                options={allOrganizations}
+                                value={assignedOrgIds}
+                                onChange={setAssignedOrgIds}
+                                placeholder="Gõ để tìm và chọn đơn vị..."
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Người theo dõi</label>
