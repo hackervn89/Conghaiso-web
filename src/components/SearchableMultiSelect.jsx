@@ -5,11 +5,13 @@ const SearchableMultiSelect = ({ options, value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
     const inputRef = useRef(null);
 
-    const selectedOptions = options.filter(opt => value.includes(opt.value));
+    const stringValue = Array.isArray(value) ? value.map(String) : [];
+
+    const selectedOptions = options.filter(opt => stringValue.includes(String(opt.value)));
 
     const availableOptions = options.filter(opt =>
-        !value.includes(opt.value) &&
-        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+        !stringValue.includes(String(opt.value)) &&
+        (opt.label || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleSelect = (option) => {
