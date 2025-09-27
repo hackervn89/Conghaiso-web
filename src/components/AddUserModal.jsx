@@ -28,8 +28,8 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             apiClient.get('/organizations')
                 .then(res => {
                     const orgOptions = res.data.map(org => ({
-                        value: org.organization_id,
-                        label: org.name
+                        value: org.org_id,
+                        label: org.org_name
                     }));
                     setOrganizations(orgOptions);
                 })
