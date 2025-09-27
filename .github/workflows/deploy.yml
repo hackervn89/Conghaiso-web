@@ -10,25 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH into server and deploy frontend
+      - name: Deploy Frontend
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
-            # Vào thư mục code frontend
+            echo "🚀 Deploying Frontend..."
             cd /var/www/conghaiso/conghaiso-web
-
-            # Reset code cho sạch (tránh conflict)
             git fetch --all
             git reset --hard origin/main
-
-            # Cài dependencies (chỉ production)
-            npm install --production
-
-            # Build project
+            echo "📦 Installing frontend dependencies..."
+            npm install
+            echo "📦 Building frontend..."
             npm run build
-
-            # Deploy ra thư mục Nginx phục vụ
-            sudo rsync -av --delete dist/ /var/www/conghaiso/frontend-web/
+            echo "🚚 Syncing frontend files to Nginx directory..."
+            # No sudo needed due to correct directory ownership
+            rsync -av --delete dist/ /var/www/conghaiso/frontend-web/
+            echo "✅ Frontend deployed successfully."
