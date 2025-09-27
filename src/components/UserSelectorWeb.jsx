@@ -78,7 +78,7 @@ const UserSelectorWeb = ({ selectedIds, setSelectedIds }) => {
             try {
                 // API /users/grouped sẽ gọi đến hàm findAllGroupedByOrganization
                 const response = await apiClient.get('/users/grouped');
-                setGroupedUsers(response.data);
+                setGroupedUsers(response.data || []);
             } catch (err) {
                 setError('Không thể tải danh sách người dùng.');
             } finally {

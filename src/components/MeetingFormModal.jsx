@@ -41,7 +41,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         if (isOpen) {
             // Tải danh sách tất cả người dùng để lọc
             apiClient.get('/users').then(res => {
-                setAllUsers(res.data.users);
+                setAllUsers(res.data?.users || []);
             });
 
             if (isEditMode && initialData) {
@@ -58,7 +58,11 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                 const fetchDetails = async () => {
                     const response = await apiClient.get(`/meetings/${initialData.meeting_id}`);
                     setAttendeeIds(response.data.attendees.map(a => a.user_id).filter(id => id !== null));
-                    setAgenda(response.data.agenda.length > 0 ? response.data.agenda : [{ title: '', documents: [] }]);
+                    const agendaFromApi = response.data.agenda;
+                    const sanitizedAgenda = (agendaFromApi && agendaFromApi.length > 0)
+                        ? agendaFromApi.map(item => ({ ...item, documents: item.documents || [] }))
+                        : [{ title: '', documents: [] }];
+                    setAgenda(sanitizedAgenda);
                 }
                 fetchDetails();
             } else {
@@ -70,7 +74,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                  setAgenda([{ title: '', documents: [] }]);
             }
             if (user?.role === 'Admin') {
-                apiClient.get('/organizations').then(res => setOrganizations(res.data));
+                apiClient.get('/organizations').then(res => setOrganizations(res.data || []));
             }
         }
     }, [initialData, isEditMode, isOpen, user]);
@@ -132,6 +136,13 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate start date and time
+        if (!startDate || !startTime) {
+            setError('Vui lòng chọn ngày và giờ bắt đầu.');
+            return;
+        }
+
         setLoading(true);
         setError('');
         const finalOrgId = user?.role === 'Admin' ? selectedOrgId : (user?.managedScopes ? user.managedScopes[0] : null);

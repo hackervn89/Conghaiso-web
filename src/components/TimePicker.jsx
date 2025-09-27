@@ -19,6 +19,8 @@ const timeOptions = generateTimeOptions();
 const TimePicker = ({ value, onChange, className = "" }) => {
     return (
         <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
             className={`w-full p-3 border rounded-md bg-white h-[50px] ${className}`}
         >
             <option value="">Chọn giờ...</option>
