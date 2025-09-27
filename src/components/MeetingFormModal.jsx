@@ -38,8 +38,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     const [currentAgendaIndex, setCurrentAgendaIndex] = useState(null);
 
     useEffect(() => {
-        if (isOpen) {
-            // Tải danh sách tất cả người dùng để lọc
+        if (isOpen) {            
             apiClient.get('/users').then(res => {
                 setAllUsers(res.data?.users || []);
             });
