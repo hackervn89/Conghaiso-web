@@ -63,7 +63,7 @@ const MeetingManagementPage = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-primaryRed">Quản lý Cuộc họp</h1>
+                <h1 className="text-3xl font-bold text-primaryRed">QUẢN LÝ CUỘC HỌP</h1>
                 {user?.role !== 'Attendee' && (
                     <button 
                         onClick={() => openModal()}
