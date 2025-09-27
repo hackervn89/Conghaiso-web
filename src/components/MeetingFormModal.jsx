@@ -78,7 +78,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         }
     }, [initialData, isEditMode, isOpen, user]);
 
-    // ... (Các hàm xử lý upload và agenda giữ nguyên)
+    
     const handleFileSelectAndUpload = async (event) => {
         const files = event.target.files;
         if (!files || files.length === 0 || currentAgendaIndex === null) return;
