@@ -92,12 +92,21 @@ const MeetingDetailPage = () => {
     }, [fetchMeetingDetails]);
 
     const handleUpdateAttendance = async (userId, status) => {
+        const originalMeeting = { ...meeting };
+
+        // Optimistic UI Update
+        const updatedAttendees = meeting.attendees.map(attendee => 
+            attendee.user_id === userId ? { ...attendee, status: status } : attendee
+        );
+        setMeeting({ ...meeting, attendees: updatedAttendees });
+
         try {
             await apiClient.post(`/meetings/${id}/attendance`, { userId, status });
-            // Tải lại dữ liệu để cập nhật giao diện
-            fetchMeetingDetails(); 
+            // Không cần fetch lại dữ liệu vì UI đã được cập nhật
         } catch (err) {
-            alert('Cập nhật điểm danh thất bại.');
+            alert('Cập nhật điểm danh thất bại. Đang hoàn tác...');
+            // Hoàn tác lại nếu có lỗi
+            setMeeting(originalMeeting);
         }
     };
     
@@ -156,7 +165,7 @@ const MeetingDetailPage = () => {
                 throw new Error("Không nhận được URL hợp lệ.");
             }
         } catch (error) {
-            setSummaryContent('Không thể tóm tắt tài liệu do máy chủ đang bận hoặc vượt quá hạn mức API. Vui lòng thử lại sau ít phút.');
+            setSummaryContent('Không thể tóm tắt tài liệu do máy chủ đang bận hoặc vượt quá hạn mức tín dụng. Vui lòng thử lại sau ít phút.');
         } finally {
             setIsSummaryLoading(false);
             setIsSummarizing(false); // Reset summarizing state

@@ -46,8 +46,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder }) => {
                 <ul className="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-48 overflow-y-auto shadow-lg">
                     {filteredOptions.length > 0 ? filteredOptions.map(option => (
                         <li
-                            key={option.value}
-                            // Sử dụng onMouseDown thay vì onClick để không bị xung đột với onBlur
+                            key={option.value}                            
                             onMouseDown={() => handleSelect(option)}
                             className="px-4 py-2 hover:bg-red-100 cursor-pointer"
                         >
