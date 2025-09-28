@@ -25,11 +25,17 @@ const EditUserModal = ({ isOpen, onClose, onUserUpdated, user }) => {
                 setRole(userData.role || 'Attendee');
                 setSelectedOrgIds(userData.organizationIds || []);
 
-                const orgOptions = orgsRes.data.map(org => ({
-                    value: org.organization_id,
-                    label: org.name
-                }));
-                setOrganizations(orgOptions);
+                const flattenOrgs = (orgs, level = 0) => {
+                    let list = [];
+                    orgs.forEach(org => {
+                        list.push({ value: org.org_id, label: '\u00A0'.repeat(level * 4) + org.org_name });
+                        if (org.children && org.children.length > 0) {
+                            list = list.concat(flattenOrgs(org.children, level + 1));
+                        }
+                    });
+                    return list;
+                };
+                setOrganizations(flattenOrgs(orgsRes.data));
 
             }).catch(() => setError("Không thể tải dữ liệu cho modal."));
         }

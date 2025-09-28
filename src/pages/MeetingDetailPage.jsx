@@ -281,7 +281,9 @@ const MeetingDetailPage = () => {
                             {isAttendeesListVisible && (
                                 meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
                                     <div className="space-y-1">
-                                        {meeting.attendees.map(attendee => (
+                                        {meeting.attendees
+                                            .filter(attendee => attendee.role !== 'Admin' && attendee.role !== 'Secretary')
+                                            .map(attendee => (
                                             <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
                                                 <div className='flex-1'>
                                                     <p className='font-medium text-gray-800'>{attendee.full_name}</p>

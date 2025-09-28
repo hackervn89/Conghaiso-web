@@ -215,7 +215,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                             </div>
                         </div>
                         
-                        {/* --- THAY ĐỔI QUAN TRỌNG: Sử dụng `allUserOptions` --- */}
+                        
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Chủ trì cuộc họp</label>
                             <SearchableSelect 
@@ -234,7 +234,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                                 placeholder="Gõ để tìm thư ký..."
                             />
                         </div>
-                        {/* --- KẾT THÚC THAY ĐỔI --- */}
+                       
 
                         <div className="md:col-span-2">
                              <label className="block text-sm font-medium text-gray-700 mb-1">Người tham dự*</label>

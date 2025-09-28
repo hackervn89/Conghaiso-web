@@ -1,7 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { UserIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
-// Hàm đệ quy để lấy tất cả ID người dùng trong một nhánh (bao gồm cả các nhánh con)
+// Hàm đệ quy để lọc người dùng có vai trò Admin/Secretary ra khỏi cây dữ liệu
+const filterUsersInGroups = (groups) => {
+    if (!groups) return [];
+    return groups
+        .map(group => {
+            const filteredUsers = (group.users || []).filter(
+                user => user.role !== 'Admin' && user.role !== 'Secretary'
+            );
+            const filteredChildren = (group.children && group.children.length > 0)
+                ? filterUsersInGroups(group.children)
+                : [];
+            return { ...group, users: filteredUsers, children: filteredChildren };
+        })
+        .filter(group => group.users.length > 0 || group.children.length > 0);
+};
+
+// Hàm đệ quy để lấy tất cả ID người dùng trong một nhánh
 const getAllUserIdsInBranch = (group) => {
     let ids = group.users ? group.users.map(u => u.user_id) : [];
     if (group.children && group.children.length > 0) {
@@ -14,41 +31,73 @@ const getAllUserIdsInBranch = (group) => {
 
 // Component con, sử dụng đệ quy để hiển thị cây
 const OrganizationGroup = ({ group, selectedIds, onUserSelect, onGroupSelect, level = 0 }) => {
-    const [isExpanded, setIsExpanded] = useState(true); // Mặc định mở ở cấp đầu
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const userIdsInBranch = getAllUserIdsInBranch(group);
     const isAllSelected = userIdsInBranch.length > 0 && userIdsInBranch.every(id => selectedIds.includes(id));
 
     return (
-        <div style={{ marginLeft: `${level * 1.5}rem` }} className="my-2">
-            <div className="flex items-center bg-gray-50 p-2 rounded-t-md">
-                <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded text-primaryRed focus:ring-red-400"
-                    checked={isAllSelected}
-                    onChange={() => onGroupSelect(userIdsInBranch)}
-                />
-                <label className="ml-3 font-semibold text-gray-800 flex-1 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-                    {group.org_name}
-                </label>
+        <div className={`ml-${level * 3}`}>
+            {/* Header của Nhóm */}
+            <div 
+                className="flex items-center px-2 py-1 rounded-md hover:bg-red-50 cursor-pointer transition-colors duration-150"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >                
+                <label 
+                    className="relative inline-flex items-center cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <input
+                        type="checkbox"
+                        className="appearance-none h-4 w-4 border rounded border-primaryRed checked:bg-primaryRed focus:ring-primaryRed"
+                        checked={isAllSelected}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            onGroupSelect(userIdsInBranch);
+                        }}
+                    />
+                    {isAllSelected && (
+                        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs font-bold">
+                            ✓
+                        </span>
+                    )}
+                </label>                                                         
+                <span className="ml-2 text-sm font-medium text-red-700 flex-1 select-none">
+                    {group.org_name} 
+                </span>
                 {group.children && group.children.length > 0 && (
-                    <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="p-1">
-                        <svg className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
+                    <ChevronDownIcon className={`h-4 w-4 text-red-500 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
                 )}
             </div>
+
+            {/* Danh sách con */}
             {isExpanded && (
-                <div className="border-l border-r border-b p-2 rounded-b-md">
-                    {/* Hiển thị người dùng trực thuộc cơ quan hiện tại */}
+                <div className="pl-4 border-l border-gray-200 ml-2 pt-0.5">
+                    {/* Hiển thị người dùng */}
                     {group.users && group.users.map(user => (
-                        <div key={user.user_id} className="flex items-center my-1 ml-2">
-                            <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded text-primaryRed focus:ring-red-400"
-                                checked={selectedIds.includes(user.user_id)}
-                                onChange={() => onUserSelect(user.user_id)}
-                            />
-                            <label className="ml-3 text-gray-700">{user.full_name}</label>
+                        <div 
+                            key={user.user_id} 
+                            className="flex items-center px-1.5 py-0.5 rounded-md hover:bg-red-50 transition-colors duration-150 cursor-pointer"
+                            onClick={() => onUserSelect(user.user_id)}
+                        >
+                            <label 
+                                className="relative inline-flex items-center cursor-pointer"
+                                onClick={(e) => e.stopPropagation()} // Ngăn sự kiện nổi bọt
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="appearance-none h-4 w-4 border rounded border-primaryRed checked:bg-primaryRed focus:ring-primaryRed"
+                                    checked={selectedIds.includes(user.user_id)}
+                                    onChange={() => onUserSelect(user.user_id)} // Xử lý thay đổi ở đây
+                                />
+                                {selectedIds.includes(user.user_id) && (
+                                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs font-bold">
+                                        ✓
+                                    </span>
+                                )}
+                            </label>
+                            <UserIcon className="h-4 w-4 ml-2 mr-1.5 text-red-400" />
+                            <label className="text-sm text-gray-600 select-none">{user.full_name}</label>
                         </div>
                     ))}
                     {/* Gọi đệ quy để render các đơn vị con */}
@@ -76,9 +125,22 @@ const UserSelectorWeb = ({ selectedIds, setSelectedIds }) => {
     useEffect(() => {
         const fetchGroupedUsers = async () => {
             try {
-                // API /users/grouped sẽ gọi đến hàm findAllGroupedByOrganization
                 const response = await apiClient.get('/users/grouped');
-                setGroupedUsers(response.data || []);
+                const filteredData = filterUsersInGroups(response.data || []);
+
+                const hoistedData = filteredData.reduce((acc, group) => {
+                    const hasUsers = group.users && group.users.length > 0;
+                    const hasChildren = group.children && group.children.length > 0;
+                    if (hasChildren && !hasUsers) {
+                        acc.push(...group.children);
+                    } else {
+                        acc.push(group);
+                    }
+                    return acc;
+                }, []);
+
+                setGroupedUsers(hoistedData);
+
             } catch (err) {
                 setError('Không thể tải danh sách người dùng.');
             } finally {
@@ -114,7 +176,7 @@ const UserSelectorWeb = ({ selectedIds, setSelectedIds }) => {
     if (error) return <p className="text-red-500">{error}</p>;
 
     return (
-        <div className="border rounded-md p-4 max-h-64 overflow-y-auto bg-white">
+        <div className="border rounded-md p-1 space-y-1 max-h-72 overflow-y-auto bg-white">
             {groupedUsers.map(group => (
                 <OrganizationGroup 
                     key={group.org_id}

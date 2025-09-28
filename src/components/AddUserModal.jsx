@@ -25,17 +25,21 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         if (isOpen) {
             resetForm();
             setSuccessMessage('');
-            apiClient.get('/organizations')
-                .then(res => {
-                    const orgOptions = res.data.map(org => ({
-                        value: org.org_id,
-                        label: org.org_name || ''
-                    }));
-                    setOrganizations(orgOptions);
-                })
-                .catch(() => {
-                    setError("Không thể tải danh sách đơn vị.");
-                });
+            apiClient.get('/organizations').then(res => {
+                const flattenOrgs = (orgs, level = 0) => {
+                    let list = [];
+                    orgs.forEach(org => {
+                        list.push({ value: org.org_id, label: '\u00A0'.repeat(level * 4) + org.org_name });
+                        if (org.children && org.children.length > 0) {
+                            list = list.concat(flattenOrgs(org.children, level + 1));
+                        }
+                    });
+                    return list;
+                };
+                setOrganizations(flattenOrgs(res.data));
+            }).catch(() => {
+                setError("Không thể tải danh sách đơn vị.");
+            });
         }
     }, [isOpen]);
 
