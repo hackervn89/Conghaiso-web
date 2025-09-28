@@ -17,15 +17,21 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
+            set -e
             echo "🚀 Deploying Frontend..."
             cd /var/www/conghaiso/conghaiso-web
+            echo "Node and NPM versions:"
+            node -v
+            npm -v
+            echo "Git reset..."
             git fetch --all
             git reset --hard origin/main
             echo "📦 Installing frontend dependencies..."
             npm install
+            echo "🔥 Removing old build directory..."
+            rm -rf dist
             echo "📦 Building frontend..."
             npm run build
             echo "🚚 Syncing frontend files to Nginx directory..."
-            # No sudo needed due to correct directory ownership
             rsync -av --delete dist/ /var/www/conghaiso/frontend-web/
             echo "✅ Frontend deployed successfully."

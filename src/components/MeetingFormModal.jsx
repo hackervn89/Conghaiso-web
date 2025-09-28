@@ -222,7 +222,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                                 options={allUserOptions}
                                 value={chairpersonId}
                                 onChange={(value) => setChairpersonId(value)}
-                                placeholder="Gõ để tìm chủ trì..."
+                                placeholder="Nhập tên chủ trì..."
                             />
                         </div>
                         <div>
