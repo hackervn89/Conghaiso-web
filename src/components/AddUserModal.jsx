@@ -29,7 +29,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 .then(res => {
                     const orgOptions = res.data.map(org => ({
                         value: org.org_id,
-                        label: org.org_name
+                        label: org.org_name || ''
                     }));
                     setOrganizations(orgOptions);
                 })
