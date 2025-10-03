@@ -85,7 +85,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         const filesToUpload = Array.from(files);
         let tempAgenda = [...agenda];
         filesToUpload.forEach(file => {
-            tempAgenda[currentAgendaIndex].documents.push({ doc_name: file.name, google_drive_file_id: null, isUploading: true });
+            tempAgenda[currentAgendaIndex].documents.push({ doc_name: file.name, filePath: null, isUploading: true });
         });
         setAgenda(tempAgenda);
         const formData = new FormData();
@@ -96,7 +96,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             response.data.files.forEach(uploadedFile => {
                 const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === uploadedFile.name);
                 if(docIndex !== -1){
-                    finalAgenda[currentAgendaIndex].documents[docIndex].google_drive_file_id = uploadedFile.id;
+                    finalAgenda[currentAgendaIndex].documents[docIndex].filePath = uploadedFile.filePath;
                     finalAgenda[currentAgendaIndex].documents[docIndex].isUploading = false;
                 }
             });

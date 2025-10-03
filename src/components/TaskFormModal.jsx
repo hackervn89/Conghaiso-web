@@ -96,7 +96,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             });
             const newDocs = response.data.files.map(file => ({
                 doc_name: file.name,
-                google_drive_file_id: file.id,
+                filePath: file.filePath,
             }));
             setDocuments(prevDocs => [...prevDocs, ...newDocs]);
         } catch (err) {
@@ -107,7 +107,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
     };
     
     const removeDocument = (docIdToRemove) => {
-        setDocuments(documents.filter(doc => doc.doc_id !== docIdToRemove && doc.google_drive_file_id !== docIdToRemove));
+        setDocuments(documents.filter(doc => doc.doc_id !== docIdToRemove && doc.filePath !== docIdToRemove));
     };
     
     const handleSubmit = async (e) => {
@@ -240,9 +240,9 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tài liệu đính kèm</label>
                             <div className="border p-2 rounded-md bg-gray-50 min-h-[50px]">
                                 {documents.map((doc, index) => (
-                                    <div key={doc.google_drive_file_id || index} className="flex items-center justify-between bg-white p-1 rounded-md mb-1">
+                                    <div key={doc.filePath || doc.doc_id || index} className="flex items-center justify-between bg-white p-1 rounded-md mb-1">
                                         <span className="text-blue-600 truncate">{doc.doc_name}</span>
-                                        <button type="button" onClick={() => removeDocument(doc.google_drive_file_id || doc.doc_name)} className="text-red-500 text-xs ml-2">XÓA</button>
+                                        <button type="button" onClick={() => removeDocument(doc.filePath || doc.doc_id)} className="text-red-500 text-xs ml-2">XÓA</button>
                                     </div>
                                 ))}
                                 <button type="button" onClick={() => fileInputRef.current.click()} className="text-sm text-blue-600 hover:text-blue-800">+ Thêm tài liệu</button>
