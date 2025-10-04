@@ -4,18 +4,22 @@ import { UserIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 // Hàm đệ quy để lọc người dùng có vai trò Admin/Secretary ra khỏi cây dữ liệu
 const filterUsersInGroups = (groups) => {
-    if (!groups) return [];
-    return groups
-        .map(group => {
-            const filteredUsers = (group.users || []).filter(
-                user => user.role !== 'Admin' && user.role !== 'Secretary'
-            );
-            const filteredChildren = (group.children && group.children.length > 0)
-                ? filterUsersInGroups(group.children)
-                : [];
-            return { ...group, users: filteredUsers, children: filteredChildren };
-        })
-        .filter(group => group.users.length > 0 || group.children.length > 0);
+    if (!Array.isArray(groups)) return [];
+    // Sử dụng reduce để xây dựng một mảng mới, tránh thay đổi (mutate) mảng gốc
+    return groups.reduce((acc, group) => {
+        // Lọc người dùng dựa trên full_name vì API không trả về 'role'
+        const filteredUsers = (group.users || []).filter(
+            user => user.full_name !== 'Quản trị viên Hệ thống' && !user.full_name.startsWith('Văn thư')
+        );
+        // Lọc đệ quy các nhóm con
+        const filteredChildren = filterUsersInGroups(group.children);
+        // Chỉ thêm nhóm vào kết quả nếu nó có người dùng hoặc có nhóm con (đã được lọc)
+        if (filteredUsers.length > 0 || filteredChildren.length > 0) {
+            // Thêm một bản sao của nhóm với dữ liệu đã được lọc
+            acc.push({ ...group, users: filteredUsers, children: filteredChildren });
+        }
+        return acc;
+    }, []);
 };
 
 // Hàm đệ quy để lấy tất cả ID người dùng trong một nhánh
@@ -126,20 +130,8 @@ const UserSelectorWeb = ({ selectedIds, setSelectedIds }) => {
         const fetchGroupedUsers = async () => {
             try {
                 const response = await apiClient.get('/users/grouped');
-                const filteredData = filterUsersInGroups(response.data || []);
-
-                const hoistedData = filteredData.reduce((acc, group) => {
-                    const hasUsers = group.users && group.users.length > 0;
-                    const hasChildren = group.children && group.children.length > 0;
-                    if (hasChildren && !hasUsers) {
-                        acc.push(...group.children);
-                    } else {
-                        acc.push(group);
-                    }
-                    return acc;
-                }, []);
-
-                setGroupedUsers(hoistedData);
+                const filteredData = filterUsersInGroups(response.data || []); // Lọc người dùng Admin/Secretary
+                setGroupedUsers(filteredData);
 
             } catch (err) {
                 setError('Không thể tải danh sách người dùng.');

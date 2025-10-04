@@ -30,7 +30,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
     useEffect(() => {
         if (isOpen) {
             // Tải danh sách người theo dõi và đơn vị
-            apiClient.get('/users/colleagues')
+            apiClient.get('/users/colleagues') // Sửa: Gọi đúng API lấy đồng nghiệp
                 .then(res => setColleagues(res.data.map(u => ({ value: u.user_id, label: u.full_name }))))
                 .catch(() => setError("Không thể tải danh sách người theo dõi."));
 
@@ -234,7 +234,11 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Người theo dõi</label>
-                            <SearchableSelect options={colleagues} value={trackerIds[0]} onChange={val => setTrackerIds(val ? [val] : [])} placeholder="Chọn một người theo dõi..." />
+                            <SearchableMultiSelect 
+                                options={colleagues} 
+                                value={trackerIds} 
+                                onChange={setTrackerIds} 
+                                placeholder="Gõ để tìm và chọn người theo dõi..." />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tài liệu đính kèm</label>
@@ -274,4 +278,3 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
 };
 
 export default TaskFormModal;
-

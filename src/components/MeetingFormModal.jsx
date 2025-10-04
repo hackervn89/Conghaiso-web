@@ -36,6 +36,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     const [allUsers, setAllUsers] = useState([]);
     const fileInputRef = useRef(null);
     const [currentAgendaIndex, setCurrentAgendaIndex] = useState(null);
+    const [tempId, setTempId] = useState(null);
 
     useEffect(() => {
         if (isOpen) {            
@@ -71,6 +72,17 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                  setSelectedOrgId(''); setAttendeeIds([]);
                  setChairpersonId(null); setSecretaryId(null);
                  setAgenda([{ title: '', documents: [] }]);
+                 const now = new Date();
+                 const day = String(now.getDate()).padStart(2, '0');
+                 const month = String(now.getMonth() + 1).padStart(2, '0');
+                 const year = now.getFullYear();
+                 const hours = String(now.getHours()).padStart(2, '0');
+                 const minutes = String(now.getMinutes()).padStart(2, '0');
+                 const seconds = String(now.getSeconds()).padStart(2, '0');
+                 const datePart = `${day}-${month}-${year}`;
+                 const timePart = `${hours}-${minutes}-${seconds}`;
+                 const newTempId = `${datePart}_${timePart}_${Math.random().toString(36).substr(2, 9)}`;
+                 setTempId(newTempId);
             }
             if (user?.role === 'Admin') {
                 apiClient.get('/organizations').then(res => setOrganizations(res.data || []));
@@ -82,6 +94,13 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     const handleFileSelectAndUpload = async (event) => {
         const files = event.target.files;
         if (!files || files.length === 0 || currentAgendaIndex === null) return;
+
+        const entityId = isEditMode ? initialData.meeting_id : tempId;
+        if (!entityId) {
+            setError("Không thể tải file lên, không có ID cho cuộc họp.");
+            return;
+        }
+
         const filesToUpload = Array.from(files);
         let tempAgenda = [...agenda];
         filesToUpload.forEach(file => {
@@ -90,14 +109,19 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         setAgenda(tempAgenda);
         const formData = new FormData();
         filesToUpload.forEach(file => { formData.append('documents', file); });
+        formData.append('entityId', entityId);
+
         try {
             const response = await apiClient.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             let finalAgenda = [...agenda];
             response.data.files.forEach(uploadedFile => {
                 const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === uploadedFile.name);
                 if(docIndex !== -1){
-                    finalAgenda[currentAgendaIndex].documents[docIndex].filePath = uploadedFile.filePath;
+                    // Thay vì gán vào filePath, chúng ta gán vào tempPath để backend biết đây là file mới cần di chuyển.
+                    // Thuộc tính filePath sẽ được trả về từ backend sau khi tạo/cập nhật thành công.
+                    finalAgenda[currentAgendaIndex].documents[docIndex].tempPath = uploadedFile.filePath;
                     finalAgenda[currentAgendaIndex].documents[docIndex].isUploading = false;
+                    delete finalAgenda[currentAgendaIndex].documents[docIndex].filePath; // Xóa filePath cũ nếu có
                 }
             });
             setAgenda(finalAgenda);
@@ -154,7 +178,11 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                 endTime: endDateTime,
                 orgId: finalOrgId,
                 attendeeIds,
-                agenda: agenda.filter(item => item.title.trim() !== ''),
+                // Lọc ra các thuộc tính không cần thiết trước khi gửi đi
+                agenda: agenda.filter(item => item.title.trim() !== '').map(item => ({
+                    ...item,
+                    documents: item.documents.map(({ isUploading, ...doc }) => doc) // Loại bỏ trạng thái isUploading
+                })),
                 chairperson_id: chairpersonId,
                 meeting_secretary_id: secretaryId,
             };

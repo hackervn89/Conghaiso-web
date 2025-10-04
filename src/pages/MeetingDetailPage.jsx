@@ -270,7 +270,7 @@ const MeetingDetailPage = () => {
                                 meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
                                     <div className="space-y-1">
                                         {meeting.attendees
-                                            .filter(attendee => attendee.role !== 'Admin' && attendee.role !== 'Secretary')
+                                            .filter(attendee => attendee.full_name !== 'Quản trị viên Hệ thống' && !attendee.full_name.startsWith('Văn thư'))
                                             .map(attendee => (
                                             <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
                                                 <div className='flex-1'>
