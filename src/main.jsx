@@ -13,6 +13,8 @@ import MeetingManagementPage from './pages/MeetingManagementPage';
 import MeetingDetailPage from './pages/MeetingDetailPage';
 import OrganizationManagementPage from './pages/OrganizationManagementPage';
 import TaskManagementPage from './pages/TaskManagementPage';
+import DraftListPage from './pages/drafts/DraftListPage';
+import DraftDetailPage from './pages/drafts/DraftDetailPage';
 
 // Cấu trúc router hoàn chỉnh
 const router = createBrowserRouter([
@@ -47,6 +49,14 @@ const router = createBrowserRouter([
       {
         path: "tasks",
         element: <TaskManagementPage />,
+      },
+      {
+        path: "du-thao",
+        element: <DraftListPage />,
+      },
+      {
+        path: "du-thao/:draftId",
+        element: <DraftDetailPage />,
       }
     ],
   },
