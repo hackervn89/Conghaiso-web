@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import DraftStatusTag from '../../components/drafts/DraftStatusTag';
 import CommentModal from '../../components/drafts/CommentModal';
-import { ArrowLeftIcon, PaperClipIcon, ChatBubbleLeftEllipsisIcon, CheckCircleIcon, UserCircleIcon, ClockIcon, TagIcon, InformationCircleIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PaperClipIcon, ChatBubbleLeftEllipsisIcon, CheckCircleIcon, UserCircleIcon, ClockIcon, TagIcon, InformationCircleIcon, UserGroupIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 // Component Card nội bộ để tái sử dụng
 const Card = ({ title, icon, children }) => (
@@ -16,6 +16,7 @@ const Card = ({ title, icon, children }) => (
 
 const DraftDetailPage = () => {
     const { draftId } = useParams();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [draft, setDraft] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -52,6 +53,20 @@ const DraftDetailPage = () => {
         }
     };
 
+    const handleDelete = async () => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn luồng góp ý này? Tất cả bình luận và tệp đính kèm sẽ bị mất. Hành động này không thể hoàn tác.')) {
+            try {
+                await apiClient.delete(`/drafts/${draftId}`);
+                alert('Đã xóa luồng góp ý thành công.');
+                navigate('/du-thao');
+            } catch (err) {
+                alert(err.response?.data?.message || 'Lỗi khi xóa dự thảo.');
+                console.error(err);
+            }
+        }
+    };
+
+
     const handleCommentSubmitted = () => {
         setIsCommentModalOpen(false);
         fetchDraftDetail(); // Tải lại dữ liệu
@@ -74,6 +89,7 @@ const DraftDetailPage = () => {
 
     const currentUserParticipant = draft.participants.find(p => p.user_id === user.userId);
     const canTakeAction = currentUserParticipant && currentUserParticipant.status === 'cho_y_kien';
+    const canManage = user?.role === 'Admin' || draft?.creator_id === user?.userId;
     
     // Ưu tiên sử dụng mảng attachments mới, nếu không có thì dùng trường cũ để tương thích ngược
     const attachments = draft.attachments && draft.attachments.length > 0 ? draft.attachments : [{ file_name: draft.file_name, file_path: draft.file_path }];
@@ -117,6 +133,12 @@ const DraftDetailPage = () => {
                                     Thống nhất
                                 </button>
                             </div>
+                        )}
+                        {/* Nút xóa chỉ hiển thị cho người tạo hoặc Admin */}
+                        {canManage && (
+                             <button onClick={handleDelete} className="mt-4 w-full flex items-center justify-center px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700">
+                                <TrashIcon className="h-5 w-5 mr-2" /> Xóa Luồng Góp Ý
+                            </button>
                         )}
                     </Card>
 

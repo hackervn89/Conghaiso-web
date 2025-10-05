@@ -7,7 +7,7 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
     const [documentNumber, setDocumentNumber] = useState('');
     const [deadline, setDeadline] = useState('');
     const [participants, setParticipants] = useState([]);
-    const [uploadedDocuments, setUploadedDocuments] = useState([]); // State mới để lưu file đã upload
+    const [documentFiles, setDocumentFiles] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const fileInputRef = useRef(null);
@@ -16,25 +16,7 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
 
-        const formData = new FormData();
-        Array.from(files).forEach(file => {
-            formData.append('documents', file);
-        });
-
-        setIsLoading(true);
-        setError('');
-        try {
-            const response = await apiClient.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            // Backend trả về { files: [...] }, mỗi file có { name, filePath }
-            setUploadedDocuments(prevDocs => [...prevDocs, ...response.data.files]);
-        } catch (err) {
-            setError("Tải file thất bại. Vui lòng thử lại.");
-        } finally {
-            setIsLoading(false);
-            if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input để có thể chọn lại cùng file
-        }
+        setDocumentFiles(prevFiles => [...prevFiles, ...Array.from(files)]);
     };
 
     const resetForm = () => {
@@ -42,14 +24,18 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
         setDocumentNumber('');
         setDeadline('');
         setParticipants([]);
-        setUploadedDocuments([]);
+        setDocumentFiles([]);
         setError('');
         setIsLoading(false);
     };
 
+    const removeDocument = (fileToRemove) => {
+        setDocumentFiles(files => files.filter(file => file !== fileToRemove));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!title || participants.length === 0 || uploadedDocuments.length === 0) {
+        if (!title || participants.length === 0 || documentFiles.length === 0) {
             setError('Tiêu đề, người tham gia và tài liệu là bắt buộc.');
             return;
         }
@@ -63,21 +49,19 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
         if (deadline) {
             formData.append('deadline', new Date(deadline).toISOString());
         }
-        for (const file of documentFiles) { // Thay đổi: Lặp qua mảng và append từng file
-            formData.append('documents', file); // Thay đổi: Tên trường là "documents" (số nhiều)
-        }
+        documentFiles.forEach(file => {
+            formData.append('documents', file);
+        });
 
         try {
             await apiClient.post('/drafts', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
             });
             resetForm();
             alert('Tạo luồng góp ý thành công!');
             onDraftCreated();
         } catch (err) {
-            setError(err.response?.data?.message || 'Lỗi khi tạo dự thảo.');
+            setError(err.response?.data?.message || 'Lỗi khi tạo dự thảo. Vui lòng kiểm tra lại thông tin.');
         } finally {
             setIsLoading(false);
         }
@@ -99,7 +83,7 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
             >
                 <h2 className="text-xl font-bold mb-4 text-primaryRed">Tạo Luồng Góp Ý Mới</h2>
                 {error && <p className="text-red-500 mb-4">{error}</p>}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form id="create-draft-form" onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Tiêu đề <span className="text-red-500">*</span></label>
                         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primaryRed focus:border-primaryRed" />
@@ -114,29 +98,43 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Tài liệu đính kèm <span className="text-red-500">*</span></label>
-                        <input type="file" onChange={handleFileChange} required multiple className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-primaryRed hover:file:bg-red-100" />
-                        {documentFiles.length > 0 && (
-                            <div className="mt-2 text-xs text-gray-600">Đã chọn {documentFiles.length} tệp.</div>
-                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" />
+                        <div className="mt-1 p-2 border border-gray-300 rounded-md bg-gray-50 min-h-[60px]">
+                            {documentFiles.map((doc, index) => (
+                                <div key={index} className="flex items-center justify-between bg-white p-1 rounded-md mb-1 text-sm">
+                                    <span className="text-blue-600 truncate">{doc.name}</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => removeDocument(doc)} 
+                                        className="text-red-500 text-xs ml-2 font-semibold"
+                                    >
+                                        XÓA
+                                    </button>
+                                </div>
+                            ))}
+                            <button type="button" onClick={() => fileInputRef.current.click()} className="text-sm text-blue-600 hover:text-blue-800 w-full text-center py-1" disabled={isLoading}>
+                                {isLoading ? 'Đang tải lên...' : '+ Bấm để chọn file'}
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Người tham gia góp ý <span className="text-red-500">*</span></label>
                         <UserSelectorWeb selectedIds={participants} setSelectedIds={setParticipants} />
                     </div>
-                    <div className="flex justify-end gap-3 pt-4">
-                        <button 
-                            type="button" 
-                            onClick={() => {
-                                resetForm();
-                                onClose();
-                            }} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                            Hủy
-                        </button>
-                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-primaryRed text-white rounded-md hover:bg-red-700 disabled:bg-red-300">
-                            {isLoading ? 'Đang tạo...' : 'Tạo Luồng'}
-                        </button>
-                    </div>
                 </form>
+                <div className="flex justify-end gap-3 pt-4 mt-4 border-t flex-shrink-0">
+                    <button 
+                        type="button" 
+                        onClick={() => {
+                            resetForm();
+                            onClose();
+                        }} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                        Hủy
+                    </button>
+                    <button type="submit" form="create-draft-form" disabled={isLoading} className="px-4 py-2 bg-primaryRed text-white rounded-md hover:bg-red-700 disabled:bg-red-300">
+                        {isLoading ? 'Đang xử lý...' : 'Tạo Luồng'}
+                    </button>
+                </div>
             </div>
         </div>
     );
