@@ -4,9 +4,10 @@ import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import MeetingFormModal from '../components/MeetingFormModal';
 import NotificationModal from '../components/NotificationModal';
+import DelegationModal from '../components/DelegationModal'; // Thêm import
 import qrcode from 'qrcode.react';
 import AttendanceStats from '../components/AttendanceStats'; // Import component mới
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const QrCodeModal = ({ isOpen, onClose, meetingId }) => {
     const [qrCodeImage, setQrCodeImage] = useState(null);
@@ -74,10 +75,12 @@ const MeetingDetailPage = () => {
     const [isSummaryLoading, setIsSummaryLoading] = useState(false);
     const [isSummarizing, setIsSummarizing] = useState(false); // New state for rate limiting
     const [lastSummarizeTime, setLastSummarizeTime] = useState(0); // New state for cooldown
+    const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false);
     const COOLDOWN_PERIOD = 60000; // 60 seconds cooldown (to align with backend retry-after)
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
+            setLoading(true);
             const response = await apiClient.get(`/meetings/${id}`);
             setMeeting(response.data);
         } catch (err) {
@@ -86,6 +89,11 @@ const MeetingDetailPage = () => {
             setLoading(false);
         }
     }, [id]);
+
+    const handleDelegationSuccess = () => {
+        setIsDelegationModalOpen(false);
+        fetchMeetingDetails(); // Tải lại dữ liệu để cập nhật danh sách người tham dự
+    };
 
     useEffect(() => {
         fetchMeetingDetails();
@@ -188,6 +196,7 @@ const MeetingDetailPage = () => {
             case 'present': return <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Có mặt</span>;
             case 'absent': return <span className="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">Vắng KP</span>;
             case 'absent_with_reason': return <span className="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Vắng CP</span>;
+            case 'delegated': return <span className="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-200 rounded-full">Đã ủy quyền</span>;
             default: return <span className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full">Chưa điểm danh</span>;
         }
     };
@@ -261,31 +270,66 @@ const MeetingDetailPage = () => {
 
                         <div className="mt-6">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2">Người tham dự ({meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? meeting.attendees.length : 0})</h2>
+                                <h2 className="text-xl font-semibold text-primaryRed border-b pb-2">
+                                    {/* Lọc ra người đã ủy quyền để có số lượng chính xác */}
+                                    Người tham dự ({meeting.attendees?.filter(a => a && a.status !== 'delegated').length || 0})
+                                </h2>
                                 <button onClick={() => setIsAttendeesListVisible(!isAttendeesListVisible)} className="text-primaryRed hover:text-red-700 font-semibold text-sm">
                                     {isAttendeesListVisible ? 'Ẩn danh sách' : 'Hiện danh sách'}
                                 </button>
                             </div>
-                            {isAttendeesListVisible && (
+                                {isAttendeesListVisible && (
                                 meeting.attendees?.length > 0 && meeting.attendees[0] !== null ? (
                                     <div className="space-y-1">
                                         {meeting.attendees
                                             .filter(attendee => attendee.full_name !== 'Quản trị viên Hệ thống' && !attendee.full_name.startsWith('Văn thư'))
-                                            .map(attendee => (
-                                            <div key={attendee.user_id} className="p-2 bg-gray-50 rounded-md flex items-center justify-between">
-                                                <div className='flex-1'>
-                                                    <p className='font-medium text-gray-800'>{attendee.full_name}</p>
-                                                    <div className='mt-1'>{getStatusBadge(attendee.status)}</div>
-                                                </div>
-                                                {canManageAttendance && (
-                                                     <div className="flex gap-1">
-                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'present')} className="p-1.5 rounded bg-green-200 text-green-800 hover:bg-green-300 text-xs">Có mặt</button>
-                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent')} className="p-1.5 rounded bg-red-200 text-red-800 hover:bg-red-300 text-xs">Vắng KP</button>
-                                                        <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent_with_reason')} className="p-1.5 rounded bg-yellow-200 text-yellow-800 hover:bg-yellow-300 text-xs">Vắng CP</button>
+                                            .map(attendee => { // attendee can be null from DB query
+                                                if (!attendee) return null;
+
+                                                const isCurrentUser = user?.userId === attendee.user_id;
+                                                const isLeader = attendee.is_leader;
+                                                const hasNotDelegated = attendee.status !== 'delegated';
+                                                const isNotADelegate = !attendee.is_delegated;
+                                                const canDelegate = isCurrentUser && isLeader && hasNotDelegated && isNotADelegate;
+                                                return (
+                                                    <div key={attendee.user_id} className="p-3 bg-gray-50 rounded-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                        <div className='flex-1'>
+                                                            <p className='font-medium text-gray-800'>{attendee.full_name}</p>
+                                                            {/* Hiển thị nếu người này đã ủy quyền */}
+                                                            {attendee.status === 'delegated' && attendee.represented_by_user_name && (
+                                                                <p className="text-sm text-orange-600 italic">
+                                                                    (Đã ủy quyền cho {attendee.represented_by_user_name})
+                                                                </p>
+                                                            )}
+                                                            {/* Hiển thị nếu người này là người tham dự thay */}
+                                                            {attendee.is_delegated === true && (
+                                                                <p className="text-sm text-blue-600 italic">(Tham dự thay)</p>
+                                                            )}
+
+                                                            <div className='mt-1'>{getStatusBadge(attendee.status)}</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                                            {canDelegate && (
+                                                                <button 
+                                                                    onClick={() => setIsDelegationModalOpen(true)} 
+                                                                    className="flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600"
+                                                                >
+                                                                    <UserGroupIcon className="h-4 w-4 mr-1" />
+                                                                    Ủy quyền
+                                                                </button>
+                                                            )}
+                                                            {/* Chỉ hiển thị nút điểm danh nếu người dùng có quyền VÀ người tham dự này chưa ủy quyền */}
+                                                            {canManageAttendance && attendee.status !== 'delegated' && (
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => handleUpdateAttendance(attendee.user_id, 'present')} className="p-1.5 rounded bg-green-200 text-green-800 hover:bg-green-300 text-xs">Có mặt</button>
+                                                                    <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent')} className="p-1.5 rounded bg-red-200 text-red-800 hover:bg-red-300 text-xs">Vắng KP</button>
+                                                                    <button onClick={() => handleUpdateAttendance(attendee.user_id, 'absent_with_reason')} className="p-1.5 rounded bg-yellow-200 text-yellow-800 hover:bg-yellow-300 text-xs">Vắng CP</button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                                )
+                                            })}
                                     </div>
                                 ) : <p className="text-gray-500">Chưa có người tham dự.</p>
                             )}
@@ -298,9 +342,15 @@ const MeetingDetailPage = () => {
             <NotificationModal isOpen={isNotifyModalOpen} onClose={() => setIsNotifyModalOpen(false)} meetingId={id} />
             <QrCodeModal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} meetingId={id} />
             <SummaryModal isOpen={isSummaryModalOpen} onClose={() => setIsSummaryModalOpen(false)} summary={summaryContent} loading={isSummaryLoading} />
+            {isDelegationModalOpen && (
+                <DelegationModal 
+                    meetingId={id}
+                    onClose={() => setIsDelegationModalOpen(false)}
+                    onSuccess={handleDelegationSuccess}
+                />
+            )}
         </div>
     );
 };
 
 export default MeetingDetailPage;
-

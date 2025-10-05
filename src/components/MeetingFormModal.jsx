@@ -90,6 +90,29 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         }
     }, [initialData, isEditMode, isOpen, user]);
 
+    // New useEffect to fetch leader when org changes
+    useEffect(() => {
+        // Only run when creating a new meeting, not editing
+        if (selectedOrgId && !isEditMode) {
+            // Assuming an endpoint to get the leader of an organization
+            // This needs to be implemented in the backend
+            apiClient.get(`/organizations/${selectedOrgId}/leader`)
+                .then(response => {
+                    const leader = response.data;
+                    if (leader && leader.user_id) {
+                        // Add leader to attendees, avoid duplicates
+                        setAttendeeIds(prevIds => 
+                            prevIds.includes(leader.user_id) ? prevIds : [...prevIds, leader.user_id]
+                        );
+                    }
+                })
+                .catch(err => {
+                    console.error(`Không thể tải thông tin lãnh đạo cho cơ quan ${selectedOrgId}.`, err);
+                    // Don't show an alert to the user, just log the error
+                });
+        }
+    }, [selectedOrgId, isEditMode]);
+
     
     const handleFileSelectAndUpload = async (event) => {
         const files = event.target.files;
