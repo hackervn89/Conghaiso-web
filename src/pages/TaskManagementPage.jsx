@@ -15,6 +15,7 @@ const TaskManagementPage = () => {
     // States for filters
     const [selectedStatuses, setSelectedStatuses] = useState(new Set());
     const [orgFilter, setOrgFilter] = useState('');
+    const [searchTerm, setSearchTerm] = useState(''); // State cho từ khóa tìm kiếm
     const [organizations, setOrganizations] = useState([]);
 
     // States for report export
@@ -31,6 +32,7 @@ const TaskManagementPage = () => {
             const params = {
                 dynamicStatus: selectedStatuses.size > 0 ? Array.from(selectedStatuses) : null,
                 orgId: orgFilter || null,
+                searchTerm: searchTerm || null, // Thêm searchTerm vào params
             };
             const response = await apiClient.get('/tasks', { params });
             setTasks(Array.isArray(response.data) ? response.data : []); // Ensure tasks is an array
@@ -132,9 +134,16 @@ const TaskManagementPage = () => {
 
     const statusFilterString = Array.from(selectedStatuses).sort().join(',');
 
+    // Sử dụng useEffect để debounce việc gọi API khi tìm kiếm
     useEffect(() => {
-        fetchTasks();
-    }, [statusFilterString, orgFilter]); // Refetch when filters change
+        const handler = setTimeout(() => {
+            fetchTasks();
+        }, 500); // Chờ 500ms sau khi người dùng ngừng gõ rồi mới gọi API
+
+        return () => {
+            clearTimeout(handler); // Hủy bỏ timeout nếu người dùng gõ tiếp
+        };
+    }, [statusFilterString, orgFilter, searchTerm]); // Refetch when filters or searchTerm change
 
     const handleOpenModal = (task = null) => {
         setCurrentTask(task);
@@ -225,6 +234,9 @@ const TaskManagementPage = () => {
             {/* [CẬP NHẬT] Filters với các trạng thái động */}
             <div className="mb-4 bg-white p-4 rounded-md shadow-sm">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div className="w-full md:w-1/3">
+                        <input type="text" placeholder="Tìm theo tên công việc..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md w-full" />
+                    </div>
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white w-full">
                             <option value="">Tất cả đơn vị</option>
