@@ -14,6 +14,7 @@ dist-ssr
 
 #backend để xem
 backend
+app
 #local
 src/api/client.js
 

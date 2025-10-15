@@ -115,6 +115,16 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
         setLoading(true);
         setError('');
 
+        // [CẬP NHẬT LOGIC] Chuẩn bị payload theo yêu cầu mới của backend khi sửa công việc
+        // 1. Lọc ra các tệp cũ người dùng muốn giữ lại (những tệp có doc_id)
+        // Backend yêu cầu định dạng { name, filePath }
+        const documentsToKeep = documents
+            .filter(d => d.doc_id)
+            .map(d => ({ name: d.doc_name, filePath: d.file_path }));
+
+        // 2. Lọc ra đường dẫn của các tệp mới tải lên (những tệp chưa có doc_id)
+        const newDocumentPaths = documents.filter(d => d.filePath && !d.doc_id).map(d => d.filePath);
+
         const payload = {
             title,
             description,
@@ -124,7 +134,8 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             priority,
             assignedOrgIds,
             trackerIds,
-            documents,
+            documents: documentsToKeep, // Mảng các tệp cũ cần giữ lại
+            newDocumentPaths, // Mảng đường dẫn tạm của các tệp mới
         };
 
         try {
@@ -245,8 +256,15 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                             <div className="border p-2 rounded-md bg-gray-50 min-h-[50px]">
                                 {documents.map((doc, index) => (
                                     <div key={doc.filePath || doc.doc_id || index} className="flex items-center justify-between bg-white p-1 rounded-md mb-1">
-                                        <span className="text-blue-600 truncate">{doc.doc_name}</span>
-                                        <button type="button" onClick={() => removeDocument(doc.filePath || doc.doc_id)} className="text-red-500 text-xs ml-2">XÓA</button>
+                                        {/* Nếu là file đã có (có doc_id), hiển thị link tải về */}
+                                        {doc.doc_id ? (
+                                            <a href={`${apiClient.defaults.baseURL}/files/view?path=${doc.file_path}`} target="_blank" rel="noopener noreferrer" download className="text-blue-600 truncate hover:underline">
+                                                {doc.doc_name}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-700 truncate">{doc.doc_name}</span>
+                                        )}
+                                        <button type="button" onClick={() => removeDocument(doc.filePath || doc.doc_id)} className="text-red-500 text-xs ml-2 font-semibold">XÓA</button>
                                     </div>
                                 ))}
                                 <button type="button" onClick={() => fileInputRef.current.click()} className="text-sm text-blue-600 hover:text-blue-800">+ Thêm tài liệu</button>

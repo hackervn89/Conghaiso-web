@@ -155,8 +155,9 @@ const TaskManagementPage = () => {
         setIsModalOpen(false);
     };
 
-    const handleSave = () => {
-        fetchTasks(); // Reload the list after saving
+    const handleSave = (savedTask) => {
+        // SỬA LỖI: Luôn tải lại toàn bộ danh sách để đảm bảo dữ liệu đầy đủ và chính xác.
+        fetchTasks();
         handleCloseModal();
     };
 
@@ -209,6 +210,20 @@ const TaskManagementPage = () => {
         return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.style}`}>{statusInfo.text}</span>;
     };
     
+    // CẢI TIẾN: Hàm để hiển thị tag Mức độ ưu tiên
+    const getPriorityTag = (priority) => {
+        switch (priority) {
+            case 'urgent':
+                return <span className="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">Khẩn</span>;
+            case 'important':
+                return <span className="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-200 rounded-full">Quan trọng</span>;
+            case 'normal':
+            default:
+                // Có thể không cần hiển thị gì cho mức "Thông thường" để giao diện đỡ rối
+                return <span className="px-2 py-1 text-xs font-semibold text-gray-700 bg-gray-100 rounded-full">Thông thường</span>;
+        }
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return <span className="text-gray-400">Chưa có</span>;
         const date = new Date(dateString);
@@ -272,22 +287,24 @@ const TaskManagementPage = () => {
                 <table className="min-w-full leading-normal table-fixed">
                      <thead>
                         <tr className="bg-primaryRed text-left text-white uppercase text-sm">
-                            <th className="px-5 py-3 border-b-2 border-red-700 w-2/5">Tên công việc</th>
-                            <th className="px-5 py-3 border-b-2 border-red-700 w-1/5">Đơn vị chủ trì</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-[35%]">Tên công việc</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-[20%]">Đơn vị chủ trì</th>
                             <th className="px-5 py-3 border-b-2 border-red-700">Người theo dõi</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 text-center">Hạn hoàn thành</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 text-center">Ưu tiên</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 text-center">Trạng thái</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                             <tr><td colSpan="5" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
+                             <tr><td colSpan="6" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
                         ) : currentTasks.map(task => (
                             <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{formatDate(task.due_date)}</td>
+                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getPriorityTag(task.priority)}</td>
                                 <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
                             </tr>
                         ))}
