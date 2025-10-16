@@ -8,6 +8,7 @@ const MeetingManagementPage = () => {
     const [meetings, setMeetings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [filters, setFilters] = useState({ status: '', timeRange: '' });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentMeeting, setCurrentMeeting] = useState(null);
     const navigate = useNavigate();
@@ -16,7 +17,12 @@ const MeetingManagementPage = () => {
     useEffect(() => {
         const fetchMeetings = async () => {
             try {
-                const response = await apiClient.get('/meetings');
+                setLoading(true);
+                const params = new URLSearchParams();
+                if (filters.status) params.append('status', filters.status);
+                if (filters.timeRange) params.append('timeRange', filters.timeRange);
+                
+                const response = await apiClient.get(`/meetings?${params.toString()}`);
                 setMeetings(response.data);
             } catch (err) {
                 setError('Không thể tải danh sách cuộc họp.');
@@ -25,13 +31,27 @@ const MeetingManagementPage = () => {
             }
         };
         fetchMeetings();
-    }, []);
+    }, [filters]);
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
 
     const handleSaveMeeting = (savedMeeting) => {
         if (currentMeeting) {
-            setMeetings(meetings.map(m => m.meeting_id === savedMeeting.meeting_id ? savedMeeting : m));
+            // Cập nhật cuộc họp và sắp xếp lại danh sách
+            const updatedMeetings = meetings.map(m => m.meeting_id === savedMeeting.meeting_id ? savedMeeting : m);
+            updatedMeetings.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+            setMeetings(updatedMeetings);
         } else {
-            setMeetings([...meetings, savedMeeting]);
+            // Thêm cuộc họp mới và sắp xếp lại danh sách
+            const newMeetings = [...meetings, savedMeeting];
+            newMeetings.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+            setMeetings(newMeetings);
         }
     };
 
@@ -57,6 +77,19 @@ const MeetingManagementPage = () => {
         return date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'upcoming':
+                return <span className="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full">Sắp diễn ra</span>;
+            case 'ongoing':
+                return <span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Đang diễn ra</span>;
+            case 'finished':
+                return <span className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full">Đã kết thúc</span>;
+            default:
+                return <span className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-200 rounded-full">N/A</span>;
+        }
+    };
+
     if (loading) return <div>Đang tải danh sách cuộc họp...</div>;
     if (error) return <div className="text-red-500">{error}</div>;
 
@@ -74,14 +107,41 @@ const MeetingManagementPage = () => {
                     </button>
                 )}
             </div>
+
+            <div className="flex items-center space-x-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                <label className="font-semibold text-gray-700">Lọc theo:</label>
+                <select
+                    name="status"
+                    value={filters.status}
+                    onChange={handleFilterChange}
+                    className="p-2 border rounded-md bg-white shadow-sm focus:ring-primaryRed focus:border-primaryRed"
+                >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="upcoming">Sắp diễn ra</option>
+                    <option value="ongoing">Đang diễn ra</option>
+                    <option value="finished">Đã kết thúc</option>
+                </select>
+                <select
+                    name="timeRange"
+                    value={filters.timeRange}
+                    onChange={handleFilterChange}
+                    className="p-2 border rounded-md bg-white shadow-sm focus:ring-primaryRed focus:border-primaryRed"
+                >
+                    <option value="">Tất cả thời gian</option>
+                    <option value="today">Hôm nay</option>
+                    <option value="this_week">Tuần này</option>
+                    <option value="this_month">Tháng này</option>
+                </select>
+            </div>
             
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
                 <table className="min-w-full leading-normal table-fixed">
                     <thead>
                         <tr className="bg-primaryRed text-left text-white uppercase text-sm">
-                            <th className="px-5 py-3 border-b-2 border-red-700 w-2/5">Tiêu đề</th>
-                            <th className="px-5 py-3 border-b-2 border-red-700 w-1/5">Địa điểm</th>
-                            <th className="px-5 py-3 border-b-2 border-red-700 w-1/5">Thời gian bắt đầu</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-[30%]">Tiêu đề</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-[20%]">Địa điểm</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 w-[20%]">Thời gian bắt đầu</th>
+                            <th className="px-5 py-3 border-b-2 border-red-700 text-center w-[15%]">Trạng thái</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 text-center w-1/5">Hành động</th>
                         </tr>
                     </thead>
@@ -94,6 +154,7 @@ const MeetingManagementPage = () => {
                                 <td onClick={() => navigate(`/meetings/${meeting.meeting_id}`)} className="px-5 py-4 border-b border-gray-200 text-sm cursor-pointer truncate">{meeting.title}</td>
                                 <td onClick={() => navigate(`/meetings/${meeting.meeting_id}`)} className="px-5 py-4 border-b border-gray-200 text-sm cursor-pointer truncate">{meeting.location}</td>
                                 <td onClick={() => navigate(`/meetings/${meeting.meeting_id}`)} className="px-5 py-4 border-b border-gray-200 text-sm cursor-pointer">{formatDateTime(meeting.start_time)}</td>
+                                <td onClick={() => navigate(`/meetings/${meeting.meeting_id}`)} className="px-5 py-4 border-b border-gray-200 text-sm cursor-pointer text-center">{getStatusBadge(meeting.dynamic_status)}</td>
                                 <td className="px-5 py-4 border-b border-gray-200 text-sm text-center space-x-2" onClick={(e) => e.stopPropagation()}> 
                                     <button onClick={() => navigate(`/meetings/${meeting.meeting_id}`)} className="text-gray-600 hover:text-primaryRed p-2 rounded-full" title="Xem chi tiết">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
