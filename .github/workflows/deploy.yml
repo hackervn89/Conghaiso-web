@@ -29,32 +29,28 @@ jobs:
           echo "🛠️ Building static files..."
           npm run build
 
-      - name: Deploy to Server via SSH
+      - name: Prepare temporary directory on server
+        # Đăng nhập vào server chỉ để chuẩn bị thư mục tạm
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
-            echo "🚀 Bắt đầu triển khai Frontend..."
-            
-            # 1. Tạo một thư mục tạm để chứa code mới, tránh ảnh hưởng đến thư mục hiện tại
-            echo "📁 Tạo thư mục tạm..."
-            mkdir -p /home/hoangvietadmin/deploy_temp/frontend
-
-            # 2. Xóa sạch thư mục tạm để đảm bảo không có file cũ
-            echo "🗑️ Dọn dẹp thư mục tạm..."
-            rm -rf /home/hoangvietadmin/deploy_temp/frontend/*
+            echo "📁 Tạo và dọn dẹp thư mục tạm..."
+            mkdir -p /home/hoangvietadmin/deploy_temp/frontend_dist
+            rm -rf /home/hoangvietadmin/deploy_temp/frontend_dist/*
 
       - name: Copy built files to server
-        # Sử dụng scp để sao chép các file đã build từ môi trường GitHub Actions sang thư mục tạm trên server
+        # (ĐÃ CẢI THIỆN) Sử dụng scp để sao chép toàn bộ thư mục 'dist' một cách đệ quy
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          source: "dist/*" # Nguồn là tất cả các file trong thư mục 'dist'
-          target: "/home/hoangvietadmin/deploy_temp/frontend" # Đích là thư mục tạm
+          source: "dist/." # Nguồn là tất cả nội dung bên trong thư mục 'dist'
+          target: "/home/hoangvietadmin/deploy_temp/frontend_dist"
+          strip_components: 1
 
       - name: Activate new version on server
         # Bước cuối cùng: Đăng nhập lại vào server để thay thế các file cũ bằng file mới
@@ -65,8 +61,12 @@ jobs:
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
             echo "🔄 Thay thế các file frontend cũ bằng phiên bản mới..."
-            # Sử dụng sudo vì thư mục /var/www/ thuộc sở hữu của root
+            # Sử dụng sudo vì thư mục /var/www/ thuộc sở hữu của root/www-data
             sudo rm -rf /var/www/conghaiso/*
-            sudo cp -r /home/hoangvietadmin/deploy_temp/frontend/* /var/www/conghaiso/
+            sudo cp -r /home/hoangvietadmin/deploy_temp/frontend_dist/* /var/www/conghaiso/
             
+            # (QUAN TRỌNG) Đảm bảo Nginx có quyền đọc các file mới
+            sudo chown -R www-data:www-data /var/www/conghaiso
+
             echo "✅ Triển khai Frontend thành công!"
+
