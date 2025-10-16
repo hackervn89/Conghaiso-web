@@ -138,6 +138,8 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             newDocumentPaths, // Mảng đường dẫn tạm của các tệp mới
         };
 
+        console.log("[Frontend] Dữ liệu gửi đi để cập nhật công việc:", JSON.stringify(payload, null, 2));
+
         try {
             const response = isEditMode
                 ? await apiClient.put(`/tasks/${taskData.task_id}`, payload)
@@ -145,6 +147,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             onSave(response.data);
             onClose();
         } catch (err) {
+            console.error("[Frontend] Lỗi khi lưu công việc:", err.response || err);
             setError(err.response?.data?.message || 'Có lỗi xảy ra, không thể lưu công việc.');
         } finally {
             setLoading(false);
