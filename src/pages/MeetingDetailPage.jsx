@@ -80,7 +80,6 @@ const MeetingDetailPage = () => {
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
-            setLoading(true);
             const response = await apiClient.get(`/meetings/${id}`);
             setMeeting(response.data);
         } catch (err) {
@@ -90,22 +89,28 @@ const MeetingDetailPage = () => {
         }
     }, [id]);
 
+    // Hàm mới chỉ để cập nhật danh sách người tham dự
+    const fetchAttendees = useCallback(async () => {
+        try {
+            // Giả sử có endpoint mới chỉ trả về danh sách người tham dự
+            const response = await apiClient.get(`/meetings/${id}/attendees`);
+            setMeeting(prevMeeting => ({ ...prevMeeting, attendees: response.data }));
+        } catch (err) {
+            console.error("Lỗi khi cập nhật danh sách người tham dự:", err);
+        }
+    }, [id]);
+
     const handleDelegationSuccess = () => {
         setIsDelegationModalOpen(false);
         fetchMeetingDetails(); // Tải lại dữ liệu để cập nhật danh sách người tham dự
     };
 
     useEffect(() => {
-        fetchMeetingDetails();
+        fetchMeetingDetails(); // Tải toàn bộ dữ liệu lần đầu
+        const intervalId = setInterval(fetchAttendees, 2000); // Chỉ cập nhật người tham dự mỗi 2 giây
 
-        // Thiết lập interval để tự động cập nhật dữ liệu mỗi 5 giây
-        const intervalId = setInterval(() => {
-            fetchMeetingDetails();
-        }, 5000); // 5000ms = 5 giây
-
-        // Dọn dẹp interval khi component unmount
         return () => clearInterval(intervalId);
-    }, [fetchMeetingDetails]);
+    }, [fetchMeetingDetails, fetchAttendees]);
 
     const handleUpdateAttendance = async (userId, status) => {
         const originalMeeting = { ...meeting };
