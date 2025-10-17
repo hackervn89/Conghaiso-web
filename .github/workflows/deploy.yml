@@ -30,7 +30,6 @@ jobs:
           npm run build
 
       - name: Prepare temporary directory on server
-        # Đăng nhập vào server chỉ để chuẩn bị thư mục tạm
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
