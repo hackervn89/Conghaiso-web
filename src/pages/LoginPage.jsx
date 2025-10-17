@@ -50,6 +50,9 @@ const LoginPage = () => {
         <h2 className="text-3xl font-bold text-center text-primaryRed">
           CÔNG HẢI SỐ
         </h2>
+        <h3 className="text-1xl font-bold text-center text-primaryRed">
+          HOÀNG VIỆT - VĂN PHÒNG ĐẢNG UỶ XÃ
+        </h3>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           {error && (
             <div className="p-3 text-white bg-red-500 rounded-md">
