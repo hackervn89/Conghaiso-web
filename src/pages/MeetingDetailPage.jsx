@@ -97,6 +97,14 @@ const MeetingDetailPage = () => {
 
     useEffect(() => {
         fetchMeetingDetails();
+
+        // Thiết lập interval để tự động cập nhật dữ liệu mỗi 5 giây
+        const intervalId = setInterval(() => {
+            fetchMeetingDetails();
+        }, 5000); // 5000ms = 5 giây
+
+        // Dọn dẹp interval khi component unmount
+        return () => clearInterval(intervalId);
     }, [fetchMeetingDetails]);
 
     const handleUpdateAttendance = async (userId, status) => {
