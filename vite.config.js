@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'vite.svg'],
       manifest: {
-        name: 'Phòng Họp Số',
-        short_name: 'PHS',
+        name: 'Công Hải số',
+        short_name: 'CHS',
         description: 'Ứng dụng quản lý công việc và cuộc họp.',
         start_url: '/',
         scope: '/',

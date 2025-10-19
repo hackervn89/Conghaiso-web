@@ -5,6 +5,7 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { saveAs } from 'file-saver';
 import Pagination from '../components/Pagination'; // Import component chung
+import { MagnifyingGlassIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
 const TaskManagementPage = () => {
     const [tasks, setTasks] = useState([]);
@@ -13,7 +14,7 @@ const TaskManagementPage = () => {
     const [currentTask, setCurrentTask] = useState(null);
     
     // States for filters
-    const [selectedStatuses, setSelectedStatuses] = useState(new Set());
+    const [selectedStatuses, setSelectedStatuses] = useState(new Set(['on_time', 'overdue']));
     const [orgFilter, setOrgFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState(''); // State cho từ khóa tìm kiếm
     const [organizations, setOrganizations] = useState([]);
@@ -22,21 +23,27 @@ const TaskManagementPage = () => {
     const [reportLoading, setReportLoading] = useState(false);
     const [reportError, setReportError] = useState(null);
 
+    // State for status tabs
+    const [activeStatusTab, setActiveStatusTab] = useState('incomplete'); // 'all', 'incomplete', 'completed'
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
-    const [tasksPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const TASKS_PER_PAGE = 10;
 
     const fetchTasks = async () => {
         setLoading(true);
         try {
             const params = {
+                page: currentPage,
+                limit: TASKS_PER_PAGE,
                 dynamicStatus: selectedStatuses.size > 0 ? Array.from(selectedStatuses) : null,
                 orgId: orgFilter || null,
                 searchTerm: searchTerm || null, // Thêm searchTerm vào params
             };
             const response = await apiClient.get('/tasks', { params });
-            setTasks(Array.isArray(response.data) ? response.data : []); // Ensure tasks is an array
-            setCurrentPage(1); // Reset to first page on new data fetch
+            setTasks(response.data.tasks || []); // Ensure tasks is an array
+            setTotalPages(response.data.totalPages || 1);
         } catch (err) {
             console.error(err);
             setTasks([]); // Set to empty array on error
@@ -161,21 +168,27 @@ const TaskManagementPage = () => {
         handleCloseModal();
     };
 
-    const handleStatusChange = (status) => {
-        const newStatuses = new Set(selectedStatuses);
-        if (newStatuses.has(status)) {
-            newStatuses.delete(status);
-        } else {
-            newStatuses.add(status);
+    // Refetch tasks when currentPage changes
+    useEffect(() => {
+        fetchTasks();
+    }, [currentPage]);
+
+    const handleTabChange = (tab) => {
+        setActiveStatusTab(tab);
+        setCurrentPage(1); // Reset to first page on tab change
+        if (tab === 'all') {
+            setSelectedStatuses(new Set());
+        } else if (tab === 'incomplete') {
+            setSelectedStatuses(new Set(['on_time', 'overdue']));
+        } else if (tab === 'completed') {
+            setSelectedStatuses(new Set(['completed_on_time', 'completed_late']));
         }
-        setSelectedStatuses(newStatuses);
     };
 
-    const statusOptions = [
-        { value: 'on_time', label: 'Còn hạn' },
-        { value: 'overdue', label: 'Trễ hạn' },
-        { value: 'completed_on_time', label: 'Hoàn thành đúng hạn' },
-        { value: 'completed_late', label: 'Hoàn thành trễ hạn' },        
+    const tabOptions = [
+        { key: 'all', label: 'Tất cả' },
+        { key: 'incomplete', label: 'Chưa hoàn thành' },
+        { key: 'completed', label: 'Đã hoàn thành' },
     ];
 
     const getDynamicStatusChip = (task) => {
@@ -230,12 +243,6 @@ const TaskManagementPage = () => {
         return date.toLocaleDateString('vi-VN');
     };
 
-    // Pagination logic
-    const indexOfLastTask = currentPage * tasksPerPage;
-    const indexOfFirstTask = indexOfLastTask - tasksPerPage;
-    const currentTasks = tasks.slice(indexOfFirstTask, indexOfLastTask);
-    const totalPages = Math.ceil(tasks.length / tasksPerPage);
-
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -246,18 +253,31 @@ const TaskManagementPage = () => {
                 </button>
             </div>
 
-            {/* [CẬP NHẬT] Filters với các trạng thái động */}
-            <div className="mb-4 bg-white p-4 rounded-md shadow-sm">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                    <div className="w-full md:w-1/3">
-                        <input type="text" placeholder="Tìm theo tên công việc..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="p-2 border rounded-md w-full" />
-                    </div>
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)} className="p-2 border rounded-md bg-white w-full">
-                            <option value="">Tất cả đơn vị</option>
-                            {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
-                        </select>
-                    </div>
+            {/* [CẬP NHẬT] Gộp bộ lọc, tabs, và bảng vào một container duy nhất */}
+            <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+                <div className="p-6">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                        <div className="relative w-full md:w-1/3">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input type="text" placeholder="Tìm theo tên công việc..." value={searchTerm} onChange={e => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }} className="p-2 pl-10 border rounded-md w-full focus:ring-primaryRed focus:border-primaryRed" />
+                        </div>
+                        <div className="relative w-full md:w-1/3">
+                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <BuildingOffice2Icon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <select value={orgFilter} onChange={e => {
+                                setOrgFilter(e.target.value);
+                                setCurrentPage(1);
+                            }} className="p-2 pl-10 border rounded-md bg-white w-full appearance-none focus:ring-primaryRed focus:border-primaryRed">
+                                <option value="">Tất cả đơn vị</option>
+                                {organizations.map(org => <option key={org.org_id} value={org.org_id}>{ '\u00A0'.repeat(org.level * 4) }{org.org_name}</option>)}
+                            </select>
+                        </div>
                     <button
                         onClick={handleExport}
                         disabled={reportLoading}
@@ -265,28 +285,28 @@ const TaskManagementPage = () => {
                     >
                         {reportLoading ? 'Đang xuất...' : 'Xuất Công văn nhắc việc'}
                     </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-4 mt-4">
-                    <span className="text-sm font-medium text-red-700">Lọc theo trạng thái:</span>
-                    {statusOptions.map(option => (
-                        <div key={option.value} className="flex items-center">
-                            <input
-                                type="checkbox"
-                                id={`status-${option.value}`}
-                                checked={selectedStatuses.has(option.value)}
-                                onChange={() => handleStatusChange(option.value)}
-                                className="h-4 w-4 rounded border-gray-300 text-primaryRed focus:ring-red-400"
-                            />
-                            <label htmlFor={`status-${option.value}`} className="ml-2 text-sm text-gray-700">{option.label}</label>
-                        </div>
+                <div className="mt-6 border-b border-gray-200">
+                    <nav className="flex -mb-px" aria-label="Tabs">
+                    {tabOptions.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => handleTabChange(tab.key)}
+                            className={`${
+                                activeStatusTab === tab.key
+                                ? 'border-primaryRed text-primaryRed bg-red-50'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            } whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-md transition-colors duration-150`}
+                        >{tab.label}</button>
                     ))}
+                    </nav>
                 </div>
-            </div>
-            
-            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                <table className="min-w-full leading-normal table-fixed">
-                     <thead>
-                        <tr className="bg-primaryRed text-left text-white uppercase text-sm">
+
+                <div className="overflow-x-auto">
+                    <table className="min-w-full leading-normal table-fixed">
+                        <thead>
+                            <tr className="bg-primaryRed text-left text-white uppercase text-sm border-t border-red-600">
                             <th className="px-5 py-3 border-b-2 border-red-700 w-[35%]">Tên công việc</th>
                             <th className="px-5 py-3 border-b-2 border-red-700 w-[20%]">Đơn vị chủ trì</th>
                             <th className="px-5 py-3 border-b-2 border-red-700">Người theo dõi</th>
@@ -297,26 +317,54 @@ const TaskManagementPage = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                             <tr><td colSpan="6" className="text-center p-4">Đang tải danh sách công việc...</td></tr>
-                        ) : currentTasks.map(task => (
-                            <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm">{task.assigned_orgs?.map(o => o.org_name).join(', ') || 'N/A'}</td>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{formatDate(task.due_date)}</td>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getPriorityTag(task.priority)}</td>
-                                <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
+                            // [CẢI TIẾN] Skeleton loader
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <tr key={index} className="animate-pulse">
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-3/4"></div></td>
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-1/2"></div></td>
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-2/3"></div></td>
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded mx-auto w-1/3"></div></td>
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded mx-auto w-1/2"></div></td>
+                                    <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded mx-auto w-1/2"></div></td>
+                                </tr>
+                            ))
+                        ) : tasks.length > 0 ? (
+                            tasks.map(task => (
+                                <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm">
+                                        {task.assignedOrgs && task.assignedOrgs.length > 0
+                                            ? task.assignedOrgs.map(org => org.name).join(', ')
+                                            : 'N/A'
+                                        }
+                                    </td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm">{task.trackers?.map(t => t.full_name).join(', ') || 'N/A'}</td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{formatDate(task.due_date)}</td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getPriorityTag(task.priority)}</td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm text-center">{getDynamicStatusChip(task)}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            // [CẢI TIẾN] Empty state
+                            <tr>
+                                <td colSpan="6" className="text-center p-10">
+                                    <h3 className="text-lg font-semibold text-gray-600">Không tìm thấy công việc nào</h3>
+                                    <p className="text-gray-500 mt-1">Hãy thử thay đổi bộ lọc hoặc tạo một công việc mới.</p>
+                                </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
-                
-            </div>
-            <Pagination 
+                </div>
+
+                <div className="p-4 border-t border-gray-200">
+                    <Pagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
                     onPageChange={setCurrentPage} 
-            />                
+                    />
+                </div>
+            </div>
             <TaskFormModal 
                 isOpen={isModalOpen} 
                 onClose={handleCloseModal} 
