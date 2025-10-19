@@ -5,7 +5,7 @@ import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { saveAs } from 'file-saver';
 import Pagination from '../components/Pagination'; // Import component chung
-import { MagnifyingGlassIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, BuildingOffice2Icon, FireIcon, StarIcon } from '@heroicons/react/24/solid';
 
 const TaskManagementPage = () => {
     const [tasks, setTasks] = useState([]);
@@ -14,7 +14,7 @@ const TaskManagementPage = () => {
     const [currentTask, setCurrentTask] = useState(null);
     
     // States for filters
-    const [selectedStatuses, setSelectedStatuses] = useState(new Set(['on_time', 'overdue']));
+    const [selectedStatuses, setSelectedStatuses] = useState(new Set(['pending', 'doing', 'overdue']));
     const [orgFilter, setOrgFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState(''); // State cho từ khóa tìm kiếm
     const [organizations, setOrganizations] = useState([]);
@@ -40,6 +40,8 @@ const TaskManagementPage = () => {
                 dynamicStatus: selectedStatuses.size > 0 ? Array.from(selectedStatuses) : null,
                 orgId: orgFilter || null,
                 searchTerm: searchTerm || null, // Thêm searchTerm vào params
+                sortBy: 'priority,due_date', // [CẬP NHẬT] Ưu tiên sắp xếp theo Mức độ ưu tiên, sau đó đến Hạn hoàn thành
+                sortDirection: 'desc,asc',     // [CẬP NHẬT] 'desc' cho priority (urgent > important > normal), 'asc' cho due_date
             };
             const response = await apiClient.get('/tasks', { params });
             setTasks(response.data.tasks || []); // Ensure tasks is an array
@@ -139,18 +141,17 @@ const TaskManagementPage = () => {
         }
     };
 
-    const statusFilterString = Array.from(selectedStatuses).sort().join(',');
-
-    // Sử dụng useEffect để debounce việc gọi API khi tìm kiếm
+    // [SỬA LỖI] Hợp nhất logic tải lại dữ liệu vào một useEffect duy nhất
+    // Lắng nghe tất cả các thay đổi từ filter và trang hiện tại
     useEffect(() => {
         const handler = setTimeout(() => {
             fetchTasks();
-        }, 500); // Chờ 500ms sau khi người dùng ngừng gõ rồi mới gọi API
+        }, 300); // Debounce 300ms
 
         return () => {
-            clearTimeout(handler); // Hủy bỏ timeout nếu người dùng gõ tiếp
+            clearTimeout(handler);
         };
-    }, [statusFilterString, orgFilter, searchTerm]); // Refetch when filters or searchTerm change
+    }, [currentPage, JSON.stringify(Array.from(selectedStatuses)), orgFilter, searchTerm]);
 
     const handleOpenModal = (task = null) => {
         setCurrentTask(task);
@@ -168,18 +169,13 @@ const TaskManagementPage = () => {
         handleCloseModal();
     };
 
-    // Refetch tasks when currentPage changes
-    useEffect(() => {
-        fetchTasks();
-    }, [currentPage]);
-
     const handleTabChange = (tab) => {
         setActiveStatusTab(tab);
         setCurrentPage(1); // Reset to first page on tab change
         if (tab === 'all') {
             setSelectedStatuses(new Set());
         } else if (tab === 'incomplete') {
-            setSelectedStatuses(new Set(['on_time', 'overdue']));
+            setSelectedStatuses(new Set(['pending', 'doing', 'overdue']));
         } else if (tab === 'completed') {
             setSelectedStatuses(new Set(['completed_on_time', 'completed_late']));
         }
@@ -213,7 +209,7 @@ const TaskManagementPage = () => {
                 if (now > dueDate) {
                     statusInfo = { text: 'Trễ hạn', style: 'bg-red-100 text-red-800' };
                 } else {
-                    statusInfo = { text: 'Còn hạn', style: 'bg-blue-100 text-blue-800' };
+                    statusInfo = { text: 'Còn hạn', style: 'bg-green-100 text-green-800' };
                 }
             } else {
                  statusInfo = { text: 'Thường xuyên', style: 'bg-gray-100 text-gray-800' };
@@ -240,7 +236,7 @@ const TaskManagementPage = () => {
     const formatDate = (dateString) => {
         if (!dateString) return <span className="text-gray-400">Chưa có</span>;
         const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN');
+        return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     return (
@@ -331,7 +327,13 @@ const TaskManagementPage = () => {
                         ) : tasks.length > 0 ? (
                             tasks.map(task => (
                                 <tr key={task.task_id} className="hover:bg-red-50 cursor-pointer" onClick={() => handleOpenModal(task)}>
-                                    <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">{task.title}</td>
+                                    <td className="px-5 py-4 border-b border-red-200 text-sm font-semibold">
+                                        <div className="flex items-center gap-2">
+                                            {task.priority === 'urgent' && <FireIcon className="h-5 w-5 text-red-500 flex-shrink-0" title="Khẩn" />}
+                                            {task.priority === 'important' && <StarIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" title="Quan trọng" />}
+                                            <span>{task.title}</span>
+                                        </div>
+                                    </td>
                                     <td className="px-5 py-4 border-b border-red-200 text-sm">
                                         {task.assignedOrgs && task.assignedOrgs.length > 0
                                             ? task.assignedOrgs.map(org => org.name).join(', ')
