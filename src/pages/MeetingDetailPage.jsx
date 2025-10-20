@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; 
+import io from 'socket.io-client'; // 1. Import socket.io-client
 import MeetingFormModal from '../components/MeetingFormModal';
 import NotificationModal from '../components/NotificationModal';
 import DelegationModal from '../components/DelegationModal'; // Thêm import
-import qrcode from 'qrcode.react';
 import AttendanceStats from '../components/AttendanceStats'; // Import component mới
 import { SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
@@ -77,6 +77,7 @@ const MeetingDetailPage = () => {
     const [lastSummarizeTime, setLastSummarizeTime] = useState(0); // New state for cooldown
     const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false);
     const COOLDOWN_PERIOD = 60000; // 60 seconds cooldown (to align with backend retry-after)
+    const [isReconnecting, setIsReconnecting] = useState(false); // State để theo dõi trạng thái kết nối lại
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
@@ -89,28 +90,53 @@ const MeetingDetailPage = () => {
         }
     }, [id]);
 
-    // Hàm mới chỉ để cập nhật danh sách người tham dự
-    const fetchAttendees = useCallback(async () => {
-        try {
-            // Giả sử có endpoint mới chỉ trả về danh sách người tham dự
-            const response = await apiClient.get(`/meetings/${id}/attendees`);
-            setMeeting(prevMeeting => ({ ...prevMeeting, attendees: response.data }));
-        } catch (err) {
-            console.error("Lỗi khi cập nhật danh sách người tham dự:", err);
-        }
-    }, [id]);
-
     const handleDelegationSuccess = () => {
         setIsDelegationModalOpen(false);
         fetchMeetingDetails(); // Tải lại dữ liệu để cập nhật danh sách người tham dự
     };
 
     useEffect(() => {
-        fetchMeetingDetails(); // Tải toàn bộ dữ liệu lần đầu
-        const intervalId = setInterval(fetchAttendees, 2000); // Chỉ cập nhật người tham dự mỗi 2 giây
+        // Tải dữ liệu chi tiết cuộc họp lần đầu
+        fetchMeetingDetails();
 
-        return () => clearInterval(intervalId);
-    }, [fetchMeetingDetails, fetchAttendees]);
+        // 2. Thiết lập kết nối WebSocket với các tùy chọn kết nối lại
+        const socket = io({
+            reconnection: true, // Bật tính năng tự động kết nối lại (mặc định là true)
+            reconnectionAttempts: 5, // Thử kết nối lại 5 lần
+            reconnectionDelay: 1000, // Bắt đầu thử lại sau 1 giây
+        });
+        const roomName = `meeting-room-${id}`;
+
+        // Sự kiện này được gọi khi kết nối lần đầu hoặc KẾT NỐI LẠI thành công
+        socket.on('connect', () => {           
+            setIsReconnecting(false); 
+            socket.emit('join_meeting_room', roomName); 
+        });
+
+        // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
+        socket.on('attendance_updated', (data) => {
+            // CẬP NHẬT: Backend đã thống nhất sử dụng `user_id` (snake_case).
+            const { user_id, status } = data;
+            setMeeting(prevMeeting => {
+                if (!prevMeeting) return null;
+                return {
+                    ...prevMeeting,
+                    attendees: prevMeeting.attendees.map(attendee =>
+                        attendee && attendee.user_id === user_id ? { ...attendee, status: status } : attendee
+                    )
+                };
+            });
+        });
+
+        // 4. Xử lý khi mất kết nối
+        socket.on('disconnect', () => {
+            console.warn('Đã mất kết nối WebSocket! Đang thử kết nối lại...');
+            setIsReconnecting(true); // Hiển thị thông báo cho người dùng
+        });
+
+        // 5. Dọn dẹp khi component unmount
+        return () => socket.disconnect();
+    }, [id, fetchMeetingDetails]);
 
     const handleUpdateAttendance = async (userId, status) => {
         const originalMeeting = { ...meeting };
@@ -123,7 +149,8 @@ const MeetingDetailPage = () => {
 
         try {
             await apiClient.post(`/meetings/${id}/attendance`, { userId, status });
-            // Không cần fetch lại dữ liệu vì UI đã được cập nhật
+            // Không cần làm gì thêm. Server sẽ phát sự kiện đến tất cả client,
+            // bao gồm cả client này, và UI sẽ được cập nhật qua listener của socket.
         } catch (err) {
             alert('Cập nhật điểm danh thất bại. Đang hoàn tác...');
             // Hoàn tác lại nếu có lỗi
@@ -217,6 +244,12 @@ const MeetingDetailPage = () => {
 
     return (
         <div>
+            {isReconnecting && (
+                <div className="bg-yellow-500 text-white text-center p-2 fixed top-0 left-0 right-0 z-50">
+                    Mất kết nối. Đang thử kết nối lại...
+                </div>
+            )}
+
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <div className="flex justify-between items-start mb-6 pb-6 border-b flex-wrap gap-4">
                     <div>

@@ -45,4 +45,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      // Proxy các request API thông thường
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      // Proxy các kết nối WebSocket (cho socket.io)
+      '/socket.io': {
+        target: 'ws://localhost:3000',
+        ws: true,
+      },
+    }
+  }
 })
