@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import io from 'socket.io-client'; // 1. Import socket.io-client
 import MeetingFormModal from '../components/MeetingFormModal';
 import NotificationModal from '../components/NotificationModal';
-import DelegationModal from '../components/DelegationModal'; // Thêm import
-import AttendanceStats from '../components/AttendanceStats'; // Import component mới
+import DelegationModal from '../components/DelegationModal'; 
+import AttendanceStats from '../components/AttendanceStats'; 
 import { SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const QrCodeModal = ({ isOpen, onClose, meetingId }) => {
@@ -58,7 +58,7 @@ const SummaryModal = ({ isOpen, onClose, summary, loading }) => {
         </div>
     );
 };
-
+const SOCKET_SERVER_URL = apiClient.defaults.baseURL.replace('/api', '');
 const MeetingDetailPage = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -100,17 +100,17 @@ const MeetingDetailPage = () => {
         fetchMeetingDetails();
 
         // 2. Thiết lập kết nối WebSocket với các tùy chọn kết nối lại
-        const socket = io({
+        const socket = io(SOCKET_SERVER_URL,{
             reconnection: true, // Bật tính năng tự động kết nối lại (mặc định là true)
             reconnectionAttempts: 5, // Thử kết nối lại 5 lần
             reconnectionDelay: 1000, // Bắt đầu thử lại sau 1 giây
         });
-        const roomName = `meeting-room-${id}`;
+        // const roomName = `meeting-room-${id}`;
 
         // Sự kiện này được gọi khi kết nối lần đầu hoặc KẾT NỐI LẠI thành công
         socket.on('connect', () => {           
             setIsReconnecting(false); 
-            socket.emit('join_meeting_room', roomName); 
+            socket.emit('join_meeting_room', id); 
         });
 
         // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
