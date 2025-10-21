@@ -101,6 +101,7 @@ const MeetingDetailPage = () => {
 
         // 2. Thiết lập kết nối WebSocket với các tùy chọn kết nối lại
         const socket = io(SOCKET_SERVER_URL,{
+            transports: ['polling'],            
             reconnection: true, // Bật tính năng tự động kết nối lại (mặc định là true)
             reconnectionAttempts: 5, // Thử kết nối lại 5 lần
             reconnectionDelay: 1000, // Bắt đầu thử lại sau 1 giây
@@ -114,8 +115,7 @@ const MeetingDetailPage = () => {
         });
 
         // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
-        socket.on('attendance_updated', (data) => {
-            // CẬP NHẬT: Backend đã thống nhất sử dụng `user_id` (snake_case).
+        socket.on('attendance_updated', (data) => {            
             const { user_id, status } = data;
             setMeeting(prevMeeting => {
                 if (!prevMeeting) return null;
