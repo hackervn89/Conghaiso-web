@@ -49,12 +49,12 @@ export default defineConfig({
     proxy: {
       // Proxy các request API thông thường
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
       // Proxy các kết nối WebSocket (cho socket.io)
       '/socket.io': {
-        target: 'ws://localhost:3000',
+        target: 'ws://localhost:5000',
         ws: true,
       },
     }
