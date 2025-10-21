@@ -116,7 +116,14 @@ const MeetingDetailPage = () => {
         // Sự kiện này được gọi khi kết nối lần đầu hoặc KẾT NỐI LẠI thành công
         socket.on('connect', () => {           
             setIsReconnecting(false); 
+            console.log("[Socket] Đã kết nối thành công!");
             socket.emit('join_meeting_room', id); 
+        });
+
+        // Sự kiện này sẽ được gọi NẾU kết nối thất bại
+        socket.on('connect_error', (err) => {
+            console.error("[Socket] LỖI KẾT NỐI:", err.message);
+            setIsReconnecting(true); 
         });
 
         // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
