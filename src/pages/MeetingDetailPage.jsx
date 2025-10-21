@@ -98,6 +98,11 @@ const MeetingDetailPage = () => {
     useEffect(() => {
         // Tải dữ liệu chi tiết cuộc họp lần đầu
         fetchMeetingDetails();
+    }, [id, fetchMeetingDetails]);
+
+    useEffect(() => {
+        if (!meeting) return;
+
 
         // 2. Thiết lập kết nối WebSocket với các tùy chọn kết nối lại
         const socket = io(SOCKET_SERVER_URL,{
@@ -115,10 +120,17 @@ const MeetingDetailPage = () => {
         });
 
         // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
-        socket.on('attendance_updated', (data) => {            
+        socket.on('attendance_updated', (data) => {
             const { user_id, status } = data;
-            setMeeting(prevMeeting => {
-                if (!prevMeeting) return null;
+
+            // Thêm log này để debug trên trình duyệt
+            console.log(`[Socket] Received update: User ${user_id} is now ${status}`);
+            
+            // Vì hook này phụ thuộc vào 'meeting', 
+            // 'prevMeeting' ở đây sẽ luôn là dữ liệu mới nhất
+            setMeeting(prevMeeting => { 
+                if (!prevMeeting) return null; 
+                
                 return {
                     ...prevMeeting,
                     attendees: prevMeeting.attendees.map(attendee =>
@@ -136,7 +148,7 @@ const MeetingDetailPage = () => {
 
         // 5. Dọn dẹp khi component unmount
         return () => socket.disconnect();
-    }, [id, fetchMeetingDetails]);
+    }, [id, meeting]);
 
     const handleUpdateAttendance = async (userId, status) => {
         const originalMeeting = { ...meeting };
