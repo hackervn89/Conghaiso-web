@@ -64,11 +64,11 @@ let SOCKET_SERVER_URL;
 if (import.meta.env.DEV) {
     // Trong môi trường phát triển, kết nối đến origin của Vite dev server.
     // Điều này cho phép Vite proxy chặn các yêu cầu /socket.io và chuyển tiếp chúng.
-    SOCKET_SERVER_URL = window.location.origin; // Ví dụ: http://localhost:5173
+    SOCKET_SERVER_URL = undefined; // Ví dụ: http://localhost:5173
 } else {
     // Trong môi trường production, kết nối đến cùng origin với frontend,
     // hoặc một URL cụ thể nếu Socket.IO server chạy trên một domain/port khác.
-    SOCKET_SERVER_URL = window.location.origin; // Hoặc URL production của Socket.IO server
+    SOCKET_SERVER_URL = "/"; // Hoặc URL production của Socket.IO server
 }
 const MeetingDetailPage = () => {
     const { id } = useParams();
@@ -127,6 +127,8 @@ const MeetingDetailPage = () => {
             // Cần thiết vì server có thể yêu cầu credentials
             withCredentials: true,
             // Các tùy chọn kết nối lại vẫn giữ nguyên
+            // [CẢI TIẾN] Chỉ định rõ transports, ưu tiên websocket
+            transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
