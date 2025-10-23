@@ -393,7 +393,7 @@ const MeetingDetailPage = () => {
                         ) : <p className="text-gray-500">Chưa có chương trình nghị sự.</p>}
                     </div>
                     <div>
-                        {canManageAttendance && <AttendanceStats meetingId={id} />}
+                        {canManageAttendance && <AttendanceStats meetingId={id} socket={socket} />}
 
                         <div className="mt-6">
                             <div className="flex justify-between items-center mb-4">

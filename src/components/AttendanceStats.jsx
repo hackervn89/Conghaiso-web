@@ -8,7 +8,7 @@ const StatItem = ({ label, value, colorClass = 'text-gray-700' }) => (
     </div>
 );
 
-const AttendanceStats = ({ meetingId }) => {
+const AttendanceStats = ({ meetingId, socket }) => {
     const [stats, setStats] = useState({
         totalSummoned: 0,
         totalPresent: 0,
@@ -18,22 +18,40 @@ const AttendanceStats = ({ meetingId }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // 1. Hàm để tải dữ liệu thống kê lần đầu tiên khi component được mount
         const fetchStats = async () => {
+            setLoading(true);
             try {
                 const response = await apiClient.get(`/meetings/${meetingId}/attendance-stats`);
                 setStats(response.data);
+                console.log("[AttendanceStats] Tải dữ liệu thống kê ban đầu thành công.");
             } catch (error) {
                 console.error("Không thể tải thống kê điểm danh", error);
             } finally {
                 setLoading(false);
             }
         };
+        
+        fetchStats();
 
-        fetchStats(); // Tải lần đầu
-        const intervalId = setInterval(fetchStats, 5000); // Cập nhật mỗi 5 giây
+        // 2. Nếu có socket, lắng nghe sự kiện cập nhật real-time
+        if (socket) {
+            const handleStatsUpdate = (newStats) => {
+                console.log("%c[Socket] ====> NHẬN ĐƯỢC SỰ KIỆN 'attendance_stats_updated' <====", "color: purple; font-weight: bold;");
+                console.log("[AttendanceStats] Dữ liệu thống kê mới nhận được:", newStats);
+                setStats(newStats);
+            };
 
-        return () => clearInterval(intervalId); // Dọn dẹp khi component bị unmount
-    }, [meetingId]);
+            console.log("[AttendanceStats] Đang thiết lập listener cho 'attendance_stats_updated'...");
+            socket.on('attendance_stats_updated', handleStatsUpdate);
+
+            // 3. Dọn dẹp: Hủy lắng nghe sự kiện khi component unmount hoặc socket thay đổi
+            return () => {
+                console.log("[AttendanceStats] Dọn dẹp: Hủy đăng ký listener 'attendance_stats_updated'.");
+                socket.off('attendance_stats_updated', handleStatsUpdate);
+            };
+        }
+    }, [meetingId, socket]);
 
     if (loading) {
         return <div className="p-4 bg-white rounded-lg shadow-md text-center">Đang tải thống kê...</div>;
