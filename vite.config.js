@@ -47,14 +47,14 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy các request API thông thường
-      '/api': {
+      // Hợp nhất proxy cho cả API và WebSocket vì chúng cùng trỏ đến một target
+      // Vite sẽ tự động xử lý cả request HTTP thông thường và upgrade WebSocket
+      '/api': { // Bất kỳ request nào bắt đầu bằng /api
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
-      // Proxy các kết nối WebSocket (cho socket.io)
       '/socket.io': {
-        target: 'ws://localhost:5000',
+        target: 'http://localhost:5000', // Sử dụng http, Vite sẽ tự chuyển sang ws cho WebSocket
         ws: true,
       },
     }

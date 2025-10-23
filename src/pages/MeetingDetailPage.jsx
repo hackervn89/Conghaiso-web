@@ -58,7 +58,18 @@ const SummaryModal = ({ isOpen, onClose, summary, loading }) => {
         </div>
     );
 };
-const SOCKET_SERVER_URL = apiClient.defaults.baseURL.replace('/api', '');
+
+// Updated: Determine SOCKET_SERVER_URL based on environment
+let SOCKET_SERVER_URL;
+if (import.meta.env.DEV) {
+    // Trong môi trường phát triển, kết nối đến origin của Vite dev server.
+    // Điều này cho phép Vite proxy chặn các yêu cầu /socket.io và chuyển tiếp chúng.
+    SOCKET_SERVER_URL = window.location.origin; // Ví dụ: http://localhost:5173
+} else {
+    // Trong môi trường production, kết nối đến cùng origin với frontend,
+    // hoặc một URL cụ thể nếu Socket.IO server chạy trên một domain/port khác.
+    SOCKET_SERVER_URL = window.location.origin; // Hoặc URL production của Socket.IO server
+}
 const MeetingDetailPage = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -78,6 +89,7 @@ const MeetingDetailPage = () => {
     const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false);
     const COOLDOWN_PERIOD = 60000; // 60 seconds cooldown (to align with backend retry-after)
     const [isReconnecting, setIsReconnecting] = useState(false); // State để theo dõi trạng thái kết nối lại
+    const [socket, setSocket] = useState(null); // State để lưu trữ đối tượng socket
 
     const fetchMeetingDetails = useCallback(async () => {
         try {
@@ -97,70 +109,115 @@ const MeetingDetailPage = () => {
 
     useEffect(() => {
         // Tải dữ liệu chi tiết cuộc họp lần đầu
-        fetchMeetingDetails();
-    }, [id, fetchMeetingDetails]);
+        fetchMeetingDetails(); // fetchMeetingDetails đã được bọc trong useCallback
+    }, [fetchMeetingDetails]);
 
+    // [SỬA LỖI] useEffect này chỉ chạy MỘT LẦN để thiết lập và quản lý vòng đời kết nối socket
     useEffect(() => {
-        if (!meeting) return;
+        // Lấy token từ localStorage để xác thực kết nối socket
+        const token = localStorage.getItem('token');
 
-
-        // 2. Thiết lập kết nối WebSocket với các tùy chọn kết nối lại
-        const socket = io(SOCKET_SERVER_URL,{
-            transports: ['polling'],            
-            reconnection: true, // Bật tính năng tự động kết nối lại (mặc định là true)
-            reconnectionAttempts: 5, // Thử kết nối lại 5 lần
-            reconnectionDelay: 1000, // Bắt đầu thử lại sau 1 giây
+        console.log("[Socket Setup] Chuẩn bị thiết lập kết nối socket...");
+        // Thiết lập kết nối WebSocket
+        const newSocket = io(SOCKET_SERVER_URL, {
+            // BẮT BUỘC: Gửi token để xác thực kết nối
+            auth: {
+                token: token
+            },
+            // Cần thiết vì server có thể yêu cầu credentials
+            withCredentials: true,
+            // Các tùy chọn kết nối lại vẫn giữ nguyên
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
         });
-        // const roomName = `meeting-room-${id}`;
 
         // Sự kiện này được gọi khi kết nối lần đầu hoặc KẾT NỐI LẠI thành công
-        socket.on('connect', () => {           
-            setIsReconnecting(false); 
+        console.log("[Socket Setup] Thiết lập các listeners cho sự kiện socket...");
+        newSocket.on('connect', () => {
+            setIsReconnecting(false);
             console.log("[Socket] Đã kết nối thành công!");
-            socket.emit('join_meeting_room', id); 
+            console.log(`[Socket] Đang gửi sự kiện 'join_meeting_room' với ID: ${id}`);
+            newSocket.emit('join_meeting_room', id);
         });
+        console.log("[Socket Setup] Đã thiết lập listener cho 'connect'.");
 
         // Sự kiện này sẽ được gọi NẾU kết nối thất bại
-        socket.on('connect_error', (err) => {
-            console.error("[Socket] LỖI KẾT NỐI:", err.message);
+        newSocket.on('connect_error', (err) => {
+            // Log chi tiết hơn theo hướng dẫn của backend
+            console.error(`[Socket] LỖI KẾT NỐI: ${err.message}`);
+            if (err.data) {
+                console.error("[Socket] Chi tiết lỗi từ server:", err.data);
+            }
             setIsReconnecting(true); 
         });
+        console.log("[Socket Setup] Đã thiết lập listener cho 'connect_error'.");
 
-        // 3. Lắng nghe sự kiện cập nhật điểm danh từ server
-        socket.on('attendance_updated', (data) => {
-            const { user_id, status } = data;
-
-            // Thêm log này để debug trên trình duyệt
-            console.log(`[Socket] Received update: User ${user_id} is now ${status}`);
-            
-            // Vì hook này phụ thuộc vào 'meeting', 
-            // 'prevMeeting' ở đây sẽ luôn là dữ liệu mới nhất
-            setMeeting(prevMeeting => { 
-                if (!prevMeeting) return null; 
-                
-                return {
-                    ...prevMeeting,
-                    attendees: prevMeeting.attendees.map(attendee =>
-                        attendee && attendee.user_id === user_id ? { ...attendee, status: status } : attendee
-                    )
-                };
-            });
-        });
-
-        // 4. Xử lý khi mất kết nối
-        socket.on('disconnect', () => {
+        // Xử lý khi mất kết nối
+        newSocket.on('disconnect', () => {
             console.warn('Đã mất kết nối WebSocket! Đang thử kết nối lại...');
             setIsReconnecting(true); // Hiển thị thông báo cho người dùng
         });
+        console.log("[Socket Setup] Đã thiết lập listener cho 'disconnect'.");
 
-        // 5. Dọn dẹp khi component unmount
-        return () => socket.disconnect();
-    }, [id, meeting]);
+        setSocket(newSocket); // Lưu socket vào state để các hook khác có thể sử dụng
+        console.log("[Socket Setup] Socket đã được tạo và lưu vào state.");
+
+        // Dọn dẹp khi component unmount: Gửi sự kiện rời phòng và ngắt kết nối
+        return () => {
+            console.log("[Socket] Dọn dẹp: Rời phòng và ngắt kết nối.");
+            console.log(`[Socket] Phát sự kiện 'leave_meeting_room' với ID: ${id}`);
+            newSocket.emit('leave_meeting_room', id);
+            newSocket.disconnect();
+        };
+    }, [id]); // Chỉ phụ thuộc vào `id`, đảm bảo chỉ chạy lại khi vào một cuộc họp khác
+
+    // [SỬA LỖI] useEffect này chỉ lắng nghe sự kiện khi socket đã sẵn sàng
+    useEffect(() => {
+        if (!socket) return; // Chỉ chạy khi socket đã được tạo
+        console.log("[Attendance List Update] Đang thiết lập listener cho 'attendance_list_updated'...");
+        // Lắng nghe sự kiện cập nhật toàn bộ danh sách điểm danh
+        socket.on('attendance_list_updated', (updatedAttendeesList) => {
+            console.log("%c[Socket] ====> NHẬN ĐƯỢC SỰ KIỆN 'attendance_list_updated' TỪ SERVER <====", "color: blue; font-weight: bold;");
+            console.log("[Socket] Dữ liệu (payload) nhận được (toàn bộ danh sách):", updatedAttendeesList);
+
+            console.log("[Attendance List Update] Bắt đầu cập nhật state meeting...");
+            setMeeting(prevMeeting => { 
+                if (!prevMeeting) {
+                    console.log("[Attendance List Update] prevMeeting là null, không cập nhật.");
+                    console.warn("[Socket] Trạng thái 'meeting' trước đó là null, không thể cập nhật danh sách người tham dự.");
+                    return null;
+                }
+
+                console.log("[Socket] Trạng thái 'meeting' TRƯỚC KHI cập nhật:", prevMeeting);
+
+                // Thay thế hoàn toàn danh sách người tham dự
+                const newMeetingState = {
+                    ...prevMeeting,
+                    attendees: updatedAttendeesList
+                };
+
+                console.log("[Socket] Trạng thái 'meeting' SAU KHI cập nhật:", newMeetingState);
+                return newMeetingState;
+            });
+            console.log("[Attendance List Update] Cập nhật state meeting hoàn tất.");
+        });
+
+        // Hàm dọn dẹp cho hook này: hủy lắng nghe sự kiện để tránh memory leak
+        return () => {
+            console.log("[Attendance List Update] Dọn dẹp: Hủy đăng ký listener 'attendance_list_updated'.");
+            socket.off('attendance_list_updated');
+        };
+    }, [socket]); // Chỉ phụ thuộc vào `socket`
+
+
 
     const handleUpdateAttendance = async (userId, status) => {
         const originalMeeting = { ...meeting };
 
+        console.log(`[Attendance Update] Bắt đầu cập nhật điểm danh cho user ${userId} với trạng thái ${status}...`);
         // Optimistic UI Update
+        console.log("[Attendance Update] Cập nhật UI (Optimistic Update)...");
         const updatedAttendees = meeting.attendees.map(attendee => 
             attendee.user_id === userId ? { ...attendee, status: status } : attendee
         );
@@ -168,10 +225,13 @@ const MeetingDetailPage = () => {
 
         try {
             await apiClient.post(`/meetings/${id}/attendance`, { userId, status });
+            console.log("[Attendance Update] Gọi API thành công.");
             // Không cần làm gì thêm. Server sẽ phát sự kiện đến tất cả client,
-            // bao gồm cả client này, và UI sẽ được cập nhật qua listener của socket.
+            // bao gồm cả client này, và UI sẽ được cập nhật qua listener của socket (attendance_list_updated).
         } catch (err) {
+            console.error("[Attendance Update] Lỗi khi gọi API:", err);
             alert('Cập nhật điểm danh thất bại. Đang hoàn tác...');
+            console.log("[Attendance Update] Hoàn tác lại UI...");
             // Hoàn tác lại nếu có lỗi
             setMeeting(originalMeeting);
         }
