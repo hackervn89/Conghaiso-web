@@ -15,6 +15,8 @@ import OrganizationManagementPage from './pages/OrganizationManagementPage';
 import TaskManagementPage from './pages/TaskManagementPage';
 import DraftListPage from './pages/drafts/DraftListPage';
 import DraftDetailPage from './pages/drafts/DraftDetailPage';
+import AiChatPage from './pages/AI/AiChatPage';
+import KnowledgeManagementPage from './pages/AI/KnowledgeManagementPage';
 
 // Cấu trúc router hoàn chỉnh
 const router = createBrowserRouter([
@@ -57,6 +59,16 @@ const router = createBrowserRouter([
       {
         path: "du-thao/:draftId",
         element: <DraftDetailPage />,
+      },
+      // Task FEW-05: Route cho người dùng
+      {
+        path: "ai-assistant",
+        element: <AiChatPage />,
+      },
+      // Task FEW-01: Route cho admin, được bảo vệ bởi logic trong DashboardLayout
+      {
+        path: "admin/knowledge",
+        element: <KnowledgeManagementPage />,
       }
     ],
   },
