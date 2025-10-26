@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import apiClient from '../../api/client';
+import logoImage from '../../assets/logo.png'; // Import logo
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 const AiChatPage = () => {
@@ -51,7 +52,7 @@ const AiChatPage = () => {
 
                         {messages.map((msg, index) => (
                             <div key={index} className={`flex gap-4 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                {msg.sender === 'ai' && <div className="w-8 h-8 rounded-full bg-primaryRed flex-shrink-0"></div>}
+                                {msg.sender === 'ai' && <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0" />}
                                 <div className={`max-w-2xl px-5 py-3 rounded-2xl ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
                                     <p className="font-sans whitespace-pre-wrap">{msg.text}</p>
                                 </div>
@@ -60,7 +61,7 @@ const AiChatPage = () => {
 
                         {isLoading && (
                             <div className="flex gap-4 justify-start">
-                                <div className="w-8 h-8 rounded-full bg-primaryRed flex-shrink-0"></div>
+                                <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0" />
                                 <div className="max-w-2xl px-5 py-3 rounded-2xl bg-white text-gray-800 border border-gray-200 rounded-bl-none">
                                     <div className="flex items-center space-x-2">
                                         <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
