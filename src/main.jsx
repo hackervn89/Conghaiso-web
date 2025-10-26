@@ -17,6 +17,7 @@ import DraftListPage from './pages/drafts/DraftListPage';
 import DraftDetailPage from './pages/drafts/DraftDetailPage';
 import AiChatPage from './pages/AI/AiChatPage';
 import KnowledgeManagementPage from './pages/AI/KnowledgeManagementPage';
+import AnchorKeywordManagementPage from './pages/AI/AnchorKeywordManagementPage';
 
 // Cấu trúc router hoàn chỉnh
 const router = createBrowserRouter([
@@ -69,6 +70,11 @@ const router = createBrowserRouter([
       {
         path: "admin/knowledge",
         element: <KnowledgeManagementPage />,
+      },
+      // Route mới cho quản lý từ khóa neo
+      {
+        path: "admin/anchor-keywords",
+        element: <AnchorKeywordManagementPage />,
       }
     ],
   },
