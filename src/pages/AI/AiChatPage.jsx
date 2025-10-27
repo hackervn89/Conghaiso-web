@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import apiClient from '../../api/client';
-import logoImage from '../../assets/logo.png'; // Import logo
+import logoImage from '../../assets/logo.png'; 
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 const AiChatPage = () => {
@@ -19,18 +19,32 @@ const AiChatPage = () => {
         e.preventDefault();
         if (input.trim() === '' || isLoading) return;
 
-        const userMessage = { sender: 'user', text: input };
-        setMessages(prev => [...prev, userMessage]);
+        const userMessageForUI = { role: 'user', parts: [{ text: input }] };
+        
+        // 1. Ghi lại lịch sử hiện tại (chưa bao gồm tin nhắn người dùng mới) để gửi lên backend
+        const currentHistory = [...messages];
+        const promptText = input; // Lưu trữ input trước khi xóa
+
+        // 2. Cập nhật UI ngay lập tức (Optimistic Update) với tin nhắn của người dùng
+        setMessages(prev => [...prev, userMessageForUI]);
         setInput('');
         setIsLoading(true);
 
         try {
-            const response = await apiClient.post('/chat', { prompt: input });
-            const aiMessage = { sender: 'ai', text: response.data.reply };
-            setMessages(prev => [...prev, aiMessage]);
+            // Gửi yêu cầu đến backend với lịch sử *trước khi* thêm tin nhắn mới của người dùng
+            const response = await apiClient.post('/chat', { // Sửa endpoint
+                prompt: promptText,                
+                history: currentHistory, 
+            });
+
+            // 4. Cập nhật toàn bộ lịch sử chat bằng dữ liệu mới từ backend
+            if (response.data && response.data.history) {
+                setMessages(response.data.history);
+            }
         } catch (error) {
-            const errorMessage = { sender: 'ai', text: 'Xin lỗi, đã có lỗi xảy ra khi kết nối với Trợ lý AI. Vui lòng thử lại.' };
-            setMessages(prev => [...prev, errorMessage]);
+            // Nếu có lỗi, hoàn tác lại tin nhắn của người dùng đã thêm lạc quan
+             setMessages(currentHistory); 
+            alert('Xin lỗi, đã có lỗi xảy ra khi kết nối với Trợ lý AI. Vui lòng thử lại.');
             console.error("Chat API error:", error);
         } finally {
             setIsLoading(false);
@@ -51,10 +65,10 @@ const AiChatPage = () => {
                         )}
 
                         {messages.map((msg, index) => (
-                            <div key={index} className={`flex gap-4 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                {msg.sender === 'ai' && <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0" />}
-                                <div className={`max-w-2xl px-5 py-3 rounded-2xl ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
-                                    <p className="font-sans whitespace-pre-wrap">{msg.text}</p>
+                            <div key={index} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                {msg.role === 'model' && <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0" />}
+                                <div className={`max-w-2xl px-5 py-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
+                                    <p className="font-sans whitespace-pre-wrap">{msg.parts[0].text}</p>
                                 </div>
                             </div>
                         ))}

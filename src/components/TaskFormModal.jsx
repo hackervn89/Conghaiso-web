@@ -174,19 +174,14 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             setLoading(true);
             try {
                 await apiClient.delete(`/tasks/${taskData.task_id}`);
+                // Chỉ gọi các hàm callback sau khi API đã thành công
                 alert('Đã xoá công việc thành công.');
-                
-                try {
-                    onDelete(taskData.task_id);
-                } catch (uiError) {
-                    console.error('Lỗi khi cập nhật danh sách công việc sau khi xóa:', uiError);
-                } finally {
-                    onClose();
-                }
-
+                onDelete(taskData.task_id); // Cập nhật UI ở component cha
+                onClose(); // Đóng modal
             } catch (apiError) {
                 console.error('Lỗi API khi xóa công việc:', apiError.response);
                 alert(apiError.response?.data?.message || 'Không thể xóa công việc. Kiểm tra console để biết thêm chi tiết.');
+                // Chỉ dừng loading nếu có lỗi API, không đóng modal để người dùng thấy lỗi
             } finally {
                 setLoading(false);
             }
