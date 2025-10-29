@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import apiClient from '../../api/client';
 import logoImage from '../../assets/logo.png'; 
+import ReactMarkdown from 'react-markdown'; // Import ReactMarkdown
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 const AiChatPage = () => {
@@ -61,14 +62,20 @@ const AiChatPage = () => {
                             <div className="text-center py-10">
                                 <h1 className="text-2xl font-bold text-primaryRed mb-2">Trợ lý AI Công Hải Số</h1>
                                 <p className="text-gray-600">Tôi có thể giúp gì cho bạn hôm nay?</p>
-                            </div>
+                            </div> 
                         )}
 
                         {messages.map((msg, index) => (
                             <div key={index} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {msg.role === 'model' && <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0" />}
                                 <div className={`max-w-2xl px-5 py-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'}`}>
-                                    <p className="font-sans whitespace-pre-wrap">{msg.parts[0].text}</p>
+                                    {msg.role === 'user' ? (
+                                        <p className="font-sans whitespace-pre-wrap">{msg.parts[0].text}</p>
+                                    ) : (
+                                        <div className="prose max-w-none">
+                                            <ReactMarkdown>{msg.parts[0].text}</ReactMarkdown>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

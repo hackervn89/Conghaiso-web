@@ -81,46 +81,68 @@ const KnowledgeManagementPage = () => {
                 </button>
             </div>
 
-            {loading && <p>Đang tải...</p>}
             {error && <p className="text-red-500">{error}</p>}
 
-            {!loading && !error && (
-                <>
-                    <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội dung (trích đoạn)</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nguồn</th>
-                                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Hành động</span></th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {knowledge.map((item) => (
-                                    <tr key={item.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-md">{item.content}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.source_document}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button type="button" onClick={() => handleOpenEditModal(item.id)} className="text-indigo-600 hover:text-indigo-900 mr-4">Sửa</button>
-                                            <button type="button" onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900">Xóa</button>
+            <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full leading-normal">
+                        <thead>
+                            <tr className="bg-primaryRed text-left text-white uppercase text-sm">
+                                <th className="px-5 py-3 border-b-2 border-red-700">ID</th>
+                                <th className="px-5 py-3 border-b-2 border-red-700">Danh mục</th>
+                                <th className="px-5 py-3 border-b-2 border-red-700">Nội dung (trích đoạn)</th>
+                                <th className="px-5 py-3 border-b-2 border-red-700">Nguồn</th>
+                                <th className="px-5 py-3 border-b-2 border-red-700 text-center">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <tr key={index} className="animate-pulse">
+                                        <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-1/4"></div></td>
+                                        <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-1/2"></div></td>
+                                        <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-3/4"></div></td>
+                                        <td className="px-5 py-4 border-b border-gray-200"><div className="h-4 bg-gray-200 rounded w-2/3"></div></td>
+                                        <td className="px-5 py-4 border-b border-gray-200"><div className="h-8 bg-gray-200 rounded w-full"></div></td>
+                                    </tr>
+                                ))
+                            ) : knowledge.length > 0 ? (
+                                knowledge.map((item) => (
+                                    <tr key={item.id} className="hover:bg-red-50">
+                                        <td className="px-5 py-4 border-b border-red-200 text-sm font-medium text-gray-900">{item.id}</td>
+                                        <td className="px-5 py-4 border-b border-red-200 text-sm text-gray-600">{item.category || 'N/A'}</td>
+                                        <td className="px-5 py-4 border-b border-red-200 text-sm text-gray-800">
+                                            <p className="truncate max-w-md">{item.content}</p>
+                                        </td>
+                                        <td className="px-5 py-4 border-b border-red-200 text-sm text-gray-600">{item.source_document || 'N/A'}</td>
+                                        <td className="px-5 py-4 border-b border-red-200 text-sm text-center">
+                                            <button onClick={() => handleOpenEditModal(item.id)} className="text-indigo-600 hover:text-indigo-900 font-medium mr-4">Sửa</button>
+                                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 font-medium">Xóa</button>
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="text-center p-10">
+                                        <h3 className="text-lg font-semibold text-gray-600">Chưa có mẩu tri thức nào</h3>
+                                        <p className="text-gray-500 mt-1">Hãy thử nạp một tri thức mới để bắt đầu.</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {!loading && pagination.pages > 1 && (
+                    <div className="p-4 border-t border-gray-200">
                     <Pagination
-                        page={pagination.page}
-                        pages={pagination.pages}
-                        total={pagination.total}
+                            currentPage={pagination.page}
+                            totalPages={pagination.pages}
                         onPageChange={handlePageChange}
                     />
-                </>
-            )}
+                    </div>
+                )}
+            </div>
 
             {isIngestModalOpen && (
                 <KnowledgeIngestModal
