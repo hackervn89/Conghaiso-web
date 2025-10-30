@@ -4,8 +4,7 @@ import logoImage from '../../assets/logo.png';
 import ReactMarkdown from 'react-markdown';
 import trongDongBg from '../../assets/trongdong1.png'; // Import hình ảnh trống đồng
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
-
-//Ai Chat
+//AI
 const AiChatPage = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
