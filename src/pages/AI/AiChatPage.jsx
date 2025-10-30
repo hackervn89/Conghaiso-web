@@ -4,6 +4,7 @@ import logoImage from '../../assets/logo.png';
 import ReactMarkdown from 'react-markdown'; // Import ReactMarkdown
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
+//Ai Chat
 const AiChatPage = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
