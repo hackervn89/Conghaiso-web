@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import apiClient from '../../api/client';
 import logoImage from '../../assets/logo.png'; 
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm'; // Import remark-gfm
 import trongDongBg from '../../assets/trongdong1.png'; // Import hình ảnh trống đồng
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 //AI
@@ -108,7 +109,7 @@ const AiChatPage = () => {
                                         <p className="font-sans whitespace-pre-wrap">{msg.parts[0].text}</p>
                                     ) : (
                                         <div className="prose prose-sm max-w-none">
-                                            <ReactMarkdown>{msg.parts[0].text}</ReactMarkdown>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.parts[0].text}</ReactMarkdown>
                                         </div>
                                     )}
                                 </div>
