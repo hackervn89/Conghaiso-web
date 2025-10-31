@@ -19,13 +19,15 @@ jobs:
         # Cài đặt Node.js để có thể chạy npm
         uses: actions/setup-node@v3
         with:
-          node-version: '20' # Sử dụng phiên bản Node.js 20.x
+          node-version: '20'
+          cache: 'npm' # [TỐI ƯU HÓA] Kích hoạt cache cho các gói npm
 
       - name: Install and Build Frontend
         # Cài đặt thư viện và biên dịch code ra các file tĩnh
         run: |
           echo "📦 Installing frontend dependencies..."
-          npm install
+          # Sử dụng 'npm ci' thay vì 'npm install' để cài đặt nhanh và nhất quán hơn từ file lock
+          npm ci
           echo "🛠️ Building static files..."
           npm run build
 

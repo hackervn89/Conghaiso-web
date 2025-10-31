@@ -102,7 +102,7 @@ const AiChatPage = () => {
                             <>
 
                         {messages.map((msg, index) => (
-                            <div key={index} className={`flex items-start gap-3 animate-fade-in-up ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div key={index} className={`flex items-start gap-3 animate-fade-in-up ai-chat-content ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {msg.role === 'model' && <img src={logoImage} alt="AI Avatar" className="w-8 h-8 rounded-full flex-shrink-0 border border-red-100 p-0.5" />}
                                 <div className={`max-w-2xl px-4 py-2 rounded-xl shadow-sm ${msg.role === 'user' ? 'bg-primaryRed text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-red-100'}`}>
                                     {msg.role === 'user' ? (
@@ -164,26 +164,3 @@ const AiChatPage = () => {
 };
 
 export default AiChatPage;
-
-/* 
-   Để hiệu ứng animation hoạt động, bạn cần thêm cấu hình này vào file tailwind.config.js
-
-   // tailwind.config.js
-   module.exports = {
-     // ...
-     theme: {
-       extend: {
-         animation: {
-           'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
-         },
-         keyframes: {
-           'fade-in-up': {
-             '0%': { opacity: '0', transform: 'translateY(10px)' },
-             '100%': { opacity: '1', transform: 'translateY(0)' },
-           },
-         },
-       },
-     },
-     // ...
-   }
-*/

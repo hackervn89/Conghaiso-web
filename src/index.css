@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* --- Phong cách bảng hiện đại CHỈ DÀNH CHO TRANG AI CHAT --- */
+/* Chỉ áp dụng các quy tắc này cho các thẻ table nằm trong một phần tử có class "ai-chat-content" */
+.ai-chat-content table {
+  width: 100%;
+  border-collapse: separate; /* SỬA LỖI: Chuyển sang separate để bo góc hoạt động */
+  border-spacing: 0; /* Loại bỏ khoảng trống mặc định giữa các ô */
+  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  border: 1px solid #fecaca; /* Thêm đường viền ngoài cùng cho chính thẻ table */
+  }
+
+.ai-chat-content th,
+.ai-chat-content td {
+  padding: 0.3rem; /* Tăng padding một chút cho thoáng */
+  /* Đường viền sẽ được định nghĩa lại ở dưới để tránh bị trùng lặp */
+  text-align: left;
+}
+
+.ai-chat-content thead th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1.5px solid #fca5a5; /* Đường viền dưới đậm hơn cho header */
+  text-align: center; /* Căn giữa nội dung tiêu đề */
+}
+
+.ai-chat-content tbody td {
+  border-top: 1px solid #fecaca; /* Thêm đường kẻ ngang phân tách các hàng */
+}
