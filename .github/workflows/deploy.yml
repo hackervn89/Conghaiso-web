@@ -41,8 +41,7 @@ jobs:
           target: "/home/hoangvietadmin/deploy_temp/frontend_dist"
          
 
-      - name: Activate new version on server
-        # Bước cuối cùng: Đăng nhập lại vào server để thay thế các file cũ bằng file mới
+      - name: Activate new version on server        
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
