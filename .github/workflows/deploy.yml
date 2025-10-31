@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Node.js
-        # Cài đặt Node.js để có thể chạy npm
+        
         uses: actions/setup-node@v3
         with:
           node-version: '20'
