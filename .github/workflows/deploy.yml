@@ -32,24 +32,14 @@ jobs:
           npm run build
 
       - name: Sync files to server with rsync
-        # Sử dụng appleboy/scp-action với chế độ rsync để đồng bộ file
-        # từ runner của GitHub Actions sang server.
         uses: appleboy/scp-action@master
-        with:
-          # --- Thông tin đăng nhập server ---
+        with:          
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-
-          # --- Cấu hình đồng bộ file ---
-          # Thư mục nguồn trên runner
-          source: "dist/"
-          # Thư mục đích trên server
+          source: "dist/"          
           target: "/home/hoangvietadmin/deploy_temp/frontend_dist"
-          # Sử dụng chuỗi "true" để tránh lỗi cảnh báo của VS Code linter
-          use_rsync: "true"
-          # Xóa các file ở đích mà không còn tồn tại ở nguồn
-          rm: true
+         
 
       - name: Activate new version on server
         # Bước cuối cùng: Đăng nhập lại vào server để thay thế các file cũ bằng file mới
