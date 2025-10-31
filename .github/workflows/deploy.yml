@@ -29,27 +29,18 @@ jobs:
           echo "🛠️ Building static files..."
           npm run build
 
-      - name: Prepare temporary directory on server
+      - name: Deploy with rsync
+        # [CẢI TIẾN] Sử dụng rsync để đồng bộ file hiệu quả hơn.
+        # rsync nhanh hơn scp vì nó chỉ truyền những phần file đã thay đổi.
+        # Nó cũng tự tạo thư mục đích và có tùy chọn xóa các file không còn tồn tại ở nguồn.
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
-            echo "📁 Tạo và dọn dẹp thư mục tạm..."
-            mkdir -p /home/hoangvietadmin/deploy_temp/frontend_dist
-            rm -rf /home/hoangvietadmin/deploy_temp/frontend_dist/*
-
-      - name: Copy built files to server
-        # (ĐÃ CẢI THIỆN) Sử dụng scp để sao chép toàn bộ thư mục 'dist' một cách đệ quy
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          source: "dist/." # Nguồn là tất cả nội dung bên trong thư mục 'dist'
-          target: "/home/hoangvietadmin/deploy_temp/frontend_dist"
-          strip_components: 1
+            echo " Syncing built files to server via rsync..."
+            rsync -avzr --delete ./dist/ /home/hoangvietadmin/deploy_temp/frontend_dist/
 
       - name: Activate new version on server
         # Bước cuối cùng: Đăng nhập lại vào server để thay thế các file cũ bằng file mới
@@ -68,4 +59,3 @@ jobs:
             sudo chown -R www-data:www-data /var/www/conghaiso
 
             echo "✅ Triển khai Frontend thành công!"
-
