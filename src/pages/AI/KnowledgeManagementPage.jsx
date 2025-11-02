@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../api/client';
 import Pagination from '../../components/Pagination'; // Giả sử component này đã tồn tại
 import KnowledgeIngestModal from '../../components/AI/KnowledgeIngestModal'; // Task FEW-02
+import KnowledgeTextIngestModal from '../../components/AI/KnowledgeTextIngestModal'; // Sửa đường dẫn import
 import KnowledgeEditModal from '../../components/AI/KnowledgeEditModal'; // Task FEW-03
 
 const KnowledgeManagementPage = () => {
@@ -10,6 +11,7 @@ const KnowledgeManagementPage = () => {
     const [error, setError] = useState(null);
     const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
     const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
+    const [isTextIngestModalOpen, setIsTextIngestModalOpen] = useState(false); // State cho modal mới
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedKnowledgeId, setSelectedKnowledgeId] = useState(null);
 
@@ -59,8 +61,9 @@ const KnowledgeManagementPage = () => {
     };
 
     const handleModalCloseAndRefresh = () => {
-        const isCreatingNew = isIngestModalOpen; // Kiểm tra xem có phải đang đóng modal tạo mới không
+        const isCreatingNew = isIngestModalOpen || isTextIngestModalOpen; // Kiểm tra xem có phải đang đóng modal tạo mới không
         setIsIngestModalOpen(false);
+        setIsTextIngestModalOpen(false);
         setIsEditModalOpen(false);
         setSelectedKnowledgeId(null);
 
@@ -73,12 +76,20 @@ const KnowledgeManagementPage = () => {
         <div className="container mx-auto p-4">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-primaryRed">Quản lý Tri thức AI</h1>
-                <button
-                    onClick={() => setIsIngestModalOpen(true)}
-                    className="px-4 py-2 font-semibold text-white bg-primaryRed rounded-md hover:bg-red-700"
-                >
-                    Nạp Tri thức mới
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsTextIngestModalOpen(true)}
+                        className="px-4 py-2 font-semibold text-primaryRed bg-white border border-primaryRed rounded-md hover:bg-red-50"
+                    >
+                        Nhập thủ công
+                    </button>
+                    <button
+                        onClick={() => setIsIngestModalOpen(true)}
+                        className="px-4 py-2 font-semibold text-white bg-primaryRed rounded-md hover:bg-red-700"
+                    >
+                        Nạp từ File
+                    </button>
+                </div>
             </div>
 
             {error && <p className="text-red-500">{error}</p>}
@@ -147,6 +158,13 @@ const KnowledgeManagementPage = () => {
             {isIngestModalOpen && (
                 <KnowledgeIngestModal
                     isOpen={isIngestModalOpen}
+                    onClose={handleModalCloseAndRefresh}
+                />
+            )}
+
+            {isTextIngestModalOpen && (
+                <KnowledgeTextIngestModal
+                    isOpen={isTextIngestModalOpen}
                     onClose={handleModalCloseAndRefresh}
                 />
             )}
