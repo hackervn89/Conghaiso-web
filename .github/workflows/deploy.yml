@@ -37,30 +37,19 @@ jobs:
           echo "--- Contents of dist directory on runner ---"
           ls -laR dist
 
-      - name: Create target directory on server
-        # [FIX] Đảm bảo thư mục đích tồn tại và có quyền ghi trước khi sao chép.
-        # Đây là bước quan trọng để khắc phục lỗi "remote command exited without exit status".
-        uses: appleboy/ssh-action@master
+      - name: Setup SSH for rsync
+        # Thiết lập khóa SSH và thêm máy chủ vào danh sách known_hosts.
+        # Đây là bước chuẩn bị để có thể chạy lệnh rsync và ssh trực tiếp.
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          port: 22 # Hoặc cổng SSH tùy chỉnh của bạn
-          script: |
-            echo "--- [FIX] Ensuring target directory exists and has correct permissions ---"
-            sudo mkdir -p /home/hoangvietadmin/deploy_temp/frontend_dist
-            sudo chown -R hoangvietadmin:hoangvietadmin /home/hoangvietadmin/deploy_temp
+          ssh-private-key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
 
-      - name: Sync files to server with rsync
-        uses: appleboy/scp-action@master
-        with:          
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          port: 22 # Hoặc cổng SSH tùy chỉnh của bạn
-          source: "dist/*"
-          target: "/home/hoangvietadmin/deploy_temp/frontend_dist"
-         
+      - name: Deploy files via rsync
+        # Chạy lệnh rsync gốc của Linux để đồng bộ hóa file.
+        # Đây là cách làm minh bạch và đáng tin cậy nhất.
+        run: |
+          echo "🚀 Deploying files to temp directory..."
+          rsync -avz --delete ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/hoangvietadmin/deploy_temp/frontend_dist/
 
       - name: Activate new version on server        
         uses: appleboy/ssh-action@master
@@ -68,24 +57,14 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          port: 22 # Hoặc cổng SSH tùy chỉnh của bạn
           script: |
-            echo "--- [DEBUG] Contents of temp directory BEFORE rsync ---"
-            # [DEBUG] Kiểm tra xem scp-action đã sao chép file vào thư mục tạm thành công chưa.
-            # Nếu thư mục này rỗng, đó là nguyên nhân chính.
-            ls -laR /home/hoangvietadmin/deploy_temp/frontend_dist
-
-            echo "🔄 Thay thế các file frontend cũ bằng phiên bản mới..."
-            # [TỐI ƯU HÓA] Sử dụng rsync để đồng bộ hóa file một cách hiệu quả.
-            # Lệnh này sẽ sao chép file mới, cập nhật file đã thay đổi và xóa file cũ không còn dùng.
-            # Thao tác này gần như tức thời, giảm thiểu rủi ro downtime.
+            echo "🚀 Activating new version on server..."
             sudo rsync -a --delete /home/hoangvietadmin/deploy_temp/frontend_dist/ /var/www/conghaiso/
             
-            # (QUAN TRỌNG) Đảm bảo Nginx có quyền đọc các file mới
+            echo "🔐 Setting permissions..."
             sudo chown -R www-data:www-data /var/www/conghaiso
-
-            echo "--- [DEBUG] Contents of final directory AFTER rsync ---"
-            # [DEBUG] Kiểm tra kết quả cuối cùng trong thư mục web.
-            ls -laR /var/www/conghaiso
+            
+            echo "🧹 Cleaning up temp directory..."
+            rm -rf /home/hoangvietadmin/deploy_temp/frontend_dist/*
 
             echo "✅ Triển khai Frontend thành công!"
