@@ -49,7 +49,7 @@ jobs:
         # Đây là cách làm minh bạch và đáng tin cậy nhất.
         run: |
           echo "🚀 Deploying files to temp directory..."
-          rsync -avz --delete ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/hoangvietadmin/deploy_temp/frontend_dist/
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/hoangvietadmin/deploy_temp/frontend_dist/
 
       - name: Activate new version on server        
         uses: appleboy/ssh-action@master
