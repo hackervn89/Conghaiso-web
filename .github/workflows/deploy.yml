@@ -49,9 +49,10 @@ jobs:
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           script: |
             echo "🔄 Thay thế các file frontend cũ bằng phiên bản mới..."
-            # Sử dụng sudo vì thư mục /var/www/ thuộc sở hữu của root/www-data
-            sudo rm -rf /var/www/conghaiso/*
-            sudo cp -r /home/hoangvietadmin/deploy_temp/frontend_dist/* /var/www/conghaiso/
+            # [TỐI ƯU HÓA] Sử dụng rsync để đồng bộ hóa file một cách hiệu quả.
+            # Lệnh này sẽ sao chép file mới, cập nhật file đã thay đổi và xóa file cũ không còn dùng.
+            # Thao tác này gần như tức thời, giảm thiểu rủi ro downtime.
+            sudo rsync -a --delete /home/hoangvietadmin/deploy_temp/frontend_dist/ /var/www/conghaiso/
             
             # (QUAN TRỌNG) Đảm bảo Nginx có quyền đọc các file mới
             sudo chown -R www-data:www-data /var/www/conghaiso
