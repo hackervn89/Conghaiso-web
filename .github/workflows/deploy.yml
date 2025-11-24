@@ -31,6 +31,12 @@ jobs:
           echo "🛠️ Building static files..."
           npm run build
 
+      - name: 🔍 Verify Build Artifacts
+        # [DEBUG] Kiểm tra xem thư mục 'dist' có được tạo đúng cách và chứa file không.
+        run: |
+          echo "--- Contents of dist directory on runner ---"
+          ls -laR dist
+
       - name: Sync files to server with rsync
         uses: appleboy/scp-action@master
         with:          
@@ -50,6 +56,11 @@ jobs:
           key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           port: 22 # Hoặc cổng SSH tùy chỉnh của bạn
           script: |
+            echo "--- [DEBUG] Contents of temp directory BEFORE rsync ---"
+            # [DEBUG] Kiểm tra xem scp-action đã sao chép file vào thư mục tạm thành công chưa.
+            # Nếu thư mục này rỗng, đó là nguyên nhân chính.
+            ls -laR /home/hoangvietadmin/deploy_temp/frontend_dist
+
             echo "🔄 Thay thế các file frontend cũ bằng phiên bản mới..."
             # [TỐI ƯU HÓA] Sử dụng rsync để đồng bộ hóa file một cách hiệu quả.
             # Lệnh này sẽ sao chép file mới, cập nhật file đã thay đổi và xóa file cũ không còn dùng.
@@ -58,5 +69,9 @@ jobs:
             
             # (QUAN TRỌNG) Đảm bảo Nginx có quyền đọc các file mới
             sudo chown -R www-data:www-data /var/www/conghaiso
+
+            echo "--- [DEBUG] Contents of final directory AFTER rsync ---"
+            # [DEBUG] Kiểm tra kết quả cuối cùng trong thư mục web.
+            ls -laR /var/www/conghaiso
 
             echo "✅ Triển khai Frontend thành công!"
