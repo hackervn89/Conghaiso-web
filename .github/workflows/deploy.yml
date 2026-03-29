@@ -1,70 +1,39 @@
 name: Deploy Frontend to Server
 
 on:
-  # Kích hoạt khi có code được đẩy lên nhánh main
   push:
     branches:
       - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted # 👈 Chuyển từ ubuntu-latest sang self-hosted
 
     steps:
       - name: Checkout code
-        # Bước này sẽ tải mã nguồn từ repo về môi trường của GitHub Actions
         uses: actions/checkout@v3
 
       - name: Setup Node.js
-        # Cài đặt Node.js để có thể chạy npm
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          cache: 'npm' # [TỐI ƯU HÓA] Kích hoạt cache cho các gói npm
+          cache: 'npm'
 
       - name: Install and Build Frontend
-        # Cài đặt thư viện và biên dịch code ra các file tĩnh
         run: |
           echo "📦 Installing frontend dependencies..."
-          # Sử dụng 'npm ci' thay vì 'npm install' để cài đặt nhanh và nhất quán hơn từ file lock
           npm ci
           echo "🛠️ Building static files..."
           npm run build
 
-      - name: 🔍 Verify Build Artifacts
-        # [DEBUG] Kiểm tra xem thư mục 'dist' có được tạo đúng cách và chứa file không.
+      - name: 🚀 Deploy to Nginx web root
         run: |
-          echo "--- Contents of dist directory on runner ---"
-          ls -laR dist
+          echo "🚀 Đưa code đã build vào thư mục của Nginx..."
+          # Vì Runner chạy trực tiếp trên server, ta chỉ cần copy thư mục dist/
+          # vào thẳng /var/www/conghaiso/ mà không cần SSH
+          sudo rsync -a --delete dist/ /var/www/conghaiso/
+          
+          echo "🔐 Cấp quyền truy cập cho Nginx..."
+          sudo chown -R www-data:www-data /var/www/conghaiso
 
-      - name: Setup SSH for rsync
-        # Thiết lập khóa SSH và thêm máy chủ vào danh sách known_hosts.
-        # Đây là bước chuẩn bị để có thể chạy lệnh rsync và ssh trực tiếp.
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-
-      - name: Deploy files via rsync
-        # Chạy lệnh rsync gốc của Linux để đồng bộ hóa file.
-        # Đây là cách làm minh bạch và đáng tin cậy nhất.
-        run: |
-          echo "🚀 Deploying files to temp directory..."
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/hoangvietadmin/deploy_temp/frontend_dist/
-
-      - name: Activate new version on server        
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
-          script: |
-            echo "🚀 Activating new version on server..."
-            sudo rsync -a --delete /home/hoangvietadmin/deploy_temp/frontend_dist/ /var/www/conghaiso/
-            
-            echo "🔐 Setting permissions..."
-            sudo chown -R www-data:www-data /var/www/conghaiso
-            
-            echo "🧹 Cleaning up temp directory..."
-            rm -rf /home/hoangvietadmin/deploy_temp/frontend_dist/*
-
-            echo "✅ Triển khai Frontend thành công!"
+          echo "✅ Triển khai Frontend thành công!"
