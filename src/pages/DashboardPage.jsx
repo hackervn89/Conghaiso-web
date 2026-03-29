@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
+import trongDongBg from '../assets/trongdong1.png';
 
 // Component Lịch đã được phục hồi
 const Calendar = ({ meetings }) => {
@@ -226,20 +227,31 @@ const DashboardPage = () => {
     );
 
     return (
-        <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-primaryRed">Chào Đồng chí, {user?.fullName}!</h1>
-                <p className="text-gray-500 mt-1">Đây là thông tin tổng quan về các hoạt động của bạn.</p>
+        <div className="relative min-h-[80vh]">
+            <div 
+                className="absolute inset-0 z-0 pointer-events-none"
+                style={{ 
+                    backgroundImage: `url(${trongDongBg})`, 
+                    backgroundSize: 'contain', 
+                    backgroundPosition: 'center', 
+                    backgroundRepeat: 'no-repeat', 
+                    opacity: 0.1
+                }} 
+            />
+            <div className="relative z-10 space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-primaryRed">Chào Đồng chí, {user?.fullName}!</h1>
+                    <p className="text-gray-500 mt-1">Đây là thông tin tổng quan về các hoạt động của bạn.</p>
+                </div>
+                {loading ? <p>Đang tải dữ liệu dashboard...</p> : (
+                    // Logic hiển thị theo vai trò người dùng
+                    (user?.role === 'Admin' || user?.role === 'Secretary') 
+                        ? <AdminSecretaryDashboard /> 
+                        : <AttendeeDashboard />
+                )}
             </div>
-            {loading ? <p>Đang tải dữ liệu dashboard...</p> : (
-                // Logic hiển thị theo vai trò người dùng
-                (user?.role === 'Admin' || user?.role === 'Secretary') 
-                    ? <AdminSecretaryDashboard /> 
-                    : <AttendeeDashboard />
-            )}
         </div>
     );
 };
 
 export default DashboardPage;
-
