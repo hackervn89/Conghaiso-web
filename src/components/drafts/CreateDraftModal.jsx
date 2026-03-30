@@ -16,7 +16,31 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
 
-        setDocumentFiles(prevFiles => [...prevFiles, ...Array.from(files)]);
+        const allowedTypes = [
+            'application/pdf', 
+            'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        const MAX_SIZE = 20 * 1024 * 1024;
+        
+        const validFiles = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`File "${file.name}" không hợp lệ. Chỉ chấp nhận file PDF, DOC, DOCX.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+            if (file.size > MAX_SIZE) {
+                alert(`File "${file.name}" vượt quá dung lượng 20MB.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+            validFiles.push(file);
+        }
+
+        setDocumentFiles(prevFiles => [...prevFiles, ...validFiles]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const resetForm = () => {
@@ -54,11 +78,15 @@ const CreateDraftModal = ({ isOpen, onClose, onDraftCreated }) => {
         });
 
         try {
-            await apiClient.post('/drafts', formData, {
+            const response = await apiClient.post('/drafts', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+            if (response.status === 202) {
+                alert('Tài liệu lớn đang được hệ thống chuyển đổi ngầm. Bạn có thể đóng cửa sổ này.');
+            } else {
+                alert('Tạo luồng góp ý thành công!');
+            }
             resetForm();
-            alert('Tạo luồng góp ý thành công!');
             onDraftCreated();
         } catch (err) {
             setError(err.response?.data?.message || 'Lỗi khi tạo dự thảo. Vui lòng kiểm tra lại thông tin.');

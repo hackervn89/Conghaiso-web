@@ -118,6 +118,29 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         const files = event.target.files;
         if (!files || files.length === 0 || currentAgendaIndex === null) return;
 
+        const allowedTypes = [
+            'application/pdf', 
+            'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        const MAX_SIZE = 20 * 1024 * 1024;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`File "${file.name}" không hợp lệ. Chỉ chấp nhận file PDF, DOC, DOCX.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                setCurrentAgendaIndex(null);
+                return;
+            }
+            if (file.size > MAX_SIZE) {
+                alert(`File "${file.name}" vượt quá dung lượng 20MB.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                setCurrentAgendaIndex(null);
+                return;
+            }
+        }
+
         const entityId = isEditMode ? initialData.meeting_id : tempId;
         if (!entityId) {
             setError("Không thể tải file lên, không có ID cho cuộc họp.");
@@ -136,6 +159,9 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
 
         try {
             const response = await apiClient.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            if (response.status === 202) {
+                alert('Tài liệu lớn đang được hệ thống chuyển đổi ngầm. Bạn có thể đóng cửa sổ này.');
+            }
             let finalAgenda = [...agenda];
             response.data.files.forEach(uploadedFile => {
                 const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === uploadedFile.name);
@@ -313,7 +339,7 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                                         )}
                                     </div>
                                 ))}
-                                <button type="button" onClick={() => triggerFileInput(agendaIndex)} className="mt-2 text-sm text-blue-600 hover:text-blue-800">+ Tải lên tài liệu</button>
+                                <button type="button" onClick={() => triggerFileInput(agendaIndex)} disabled={loading} className="mt-2 text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50">+ Tải lên tài liệu</button>
                             </div>
                         ))}
                         <button type="button" onClick={addAgendaItem} className="w-full p-2 mt-2 text-sm text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Thêm nội dung chương trình</button>

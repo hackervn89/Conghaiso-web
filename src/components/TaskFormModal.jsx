@@ -86,6 +86,29 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
         
+        const allowedTypes = [
+            'application/pdf', 
+            'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        const MAX_SIZE = 20 * 1024 * 1024;
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`File "${file.name}" không hợp lệ. Chỉ chấp nhận file PDF, DOC, DOCX.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+            if (file.size > MAX_SIZE) {
+                alert(`File "${file.name}" vượt quá dung lượng 20MB.`);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                return;
+            }
+        }
+
+        setLoading(true);
+
         const formData = new FormData();
         Array.from(files).forEach(file => {
             formData.append('documents', file);
@@ -95,6 +118,9 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
             const response = await apiClient.post('/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+            if (response.status === 202) {
+                alert('Tài liệu lớn đang được hệ thống chuyển đổi ngầm. Bạn có thể đóng cửa sổ này.');
+            }
             const newDocs = response.data.files.map(file => ({
                 doc_name: file.name,
                 filePath: file.filePath,
@@ -103,6 +129,7 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
         } catch (err) {
             setError("Tải file thất bại.");
         } finally {
+            setLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
@@ -243,9 +270,9 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                                             ))}
                                         </div>
                                     )}
-                                    <button type="button" onClick={() => fileInputRef.current.click()} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primaryRed bg-red-50 rounded-md hover:bg-red-100 border border-transparent">
+                                    <button type="button" onClick={() => fileInputRef.current.click()} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-primaryRed bg-red-50 rounded-md hover:bg-red-100 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed">
                                         <DocumentPlusIcon className="h-5 w-5" />
-                                        Thêm tài liệu
+                                        {loading ? 'Đang xử lý...' : 'Thêm tài liệu'}
                                     </button>
                                 </div>
                             </div>

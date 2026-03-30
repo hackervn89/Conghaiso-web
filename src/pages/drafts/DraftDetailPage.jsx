@@ -72,12 +72,6 @@ const DraftDetailPage = () => {
         fetchDraftDetail(); // Tải lại dữ liệu
     };
 
-    const handleOpenFile = (filePath) => {
-        if (!filePath) return;
-        const fileUrl = `${apiClient.defaults.baseURL}/files/view?path=${encodeURIComponent(filePath)}`;
-        window.open(fileUrl, '_blank');
-    };
-
     const formatDateTime = (isoString) => {
         if (!isoString) return 'N/A';
         return new Date(isoString).toLocaleString('vi-VN');
@@ -116,10 +110,15 @@ const DraftDetailPage = () => {
                         <div className="mt-6 space-y-2">
                             <h4 className="text-sm font-semibold text-gray-600">Tài liệu đính kèm:</h4>
                             {attachments.map((file, index) => (
-                                file.file_path && <button key={index} onClick={() => handleOpenFile(file.file_path)} className="w-full flex items-center justify-start text-left px-3 py-2 font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
-                                    <PaperClipIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                                    <span className="truncate">{file.file_name}</span>
-                                </button>
+                                file.file_path && <a 
+                                    key={index} 
+                                    href={`${apiClient.defaults.baseURL}/files/view?path=${encodeURIComponent(file.file_path)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-start text-left px-3 py-2 font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
+                                        <PaperClipIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                                        <span className="truncate">{file.file_name}</span>
+                                </a>
                             ))}
                         </div>
                         {canTakeAction && (
