@@ -166,11 +166,8 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             response.data.files.forEach(uploadedFile => {
                 const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === uploadedFile.name);
                 if(docIndex !== -1){
-                    // Thay vì gán vào filePath, chúng ta gán vào tempPath để backend biết đây là file mới cần di chuyển.
-                    // Thuộc tính filePath sẽ được trả về từ backend sau khi tạo/cập nhật thành công.
-                    finalAgenda[currentAgendaIndex].documents[docIndex].tempPath = uploadedFile.filePath;
+                    finalAgenda[currentAgendaIndex].documents[docIndex].filePath = uploadedFile.filePath;
                     finalAgenda[currentAgendaIndex].documents[docIndex].isUploading = false;
-                    delete finalAgenda[currentAgendaIndex].documents[docIndex].filePath; // Xóa filePath cũ nếu có
                 }
             });
             setAgenda(finalAgenda);
