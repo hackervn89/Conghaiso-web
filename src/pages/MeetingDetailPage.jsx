@@ -113,114 +113,61 @@ const MeetingDetailPage = () => {
         fetchMeetingDetails(); // fetchMeetingDetails đã được bọc trong useCallback
     }, [fetchMeetingDetails]);
 
-    // [SỬA LỖI] useEffect này chỉ chạy MỘT LẦN để thiết lập và quản lý vòng đời kết nối socket
     useEffect(() => {
-        // Lấy token từ localStorage để xác thực kết nối socket
         const token = localStorage.getItem('token');
-
-        console.log("[Socket Setup] Chuẩn bị thiết lập kết nối socket...");
-        // Thiết lập kết nối WebSocket
         const newSocket = io(SOCKET_SERVER_URL, {
-            // BẮT BUỘC: Gửi token để xác thực kết nối
             auth: {
                 token: token
             },
-            // Cần thiết vì server có thể yêu cầu credentials
             withCredentials: true,
-            // Các tùy chọn kết nối lại vẫn giữ nguyên
-            // [CẢI TIẾN] Chỉ định rõ transports, ưu tiên websocket
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
         });
 
-        // Sự kiện này được gọi khi kết nối lần đầu hoặc KẾT NỐI LẠI thành công
-        console.log("[Socket Setup] Thiết lập các listeners cho sự kiện socket...");
         newSocket.on('connect', () => {
             setIsReconnecting(false);
-            console.log("[Socket] Đã kết nối thành công!");
-            console.log(`[Socket] Đang gửi sự kiện 'join_meeting_room' với ID: ${id}`);
             newSocket.emit('join_meeting_room', id);
         });
-        console.log("[Socket Setup] Đã thiết lập listener cho 'connect'.");
 
-        // Sự kiện này sẽ được gọi NẾU kết nối thất bại
-        newSocket.on('connect_error', (err) => {
-            // Log chi tiết hơn theo hướng dẫn của backend
-            console.error(`[Socket] LỖI KẾT NỐI: ${err.message}`);
-            if (err.data) {
-                console.error("[Socket] Chi tiết lỗi từ server:", err.data);
-            }
+        newSocket.on('connect_error', () => {
             setIsReconnecting(true); 
         });
-        console.log("[Socket Setup] Đã thiết lập listener cho 'connect_error'.");
 
-        // Xử lý khi mất kết nối
         newSocket.on('disconnect', () => {
-            console.warn('Đã mất kết nối WebSocket! Đang thử kết nối lại...');
-            setIsReconnecting(true); // Hiển thị thông báo cho người dùng
+            setIsReconnecting(true);
         });
-        console.log("[Socket Setup] Đã thiết lập listener cho 'disconnect'.");
 
-        setSocket(newSocket); // Lưu socket vào state để các hook khác có thể sử dụng
-        console.log("[Socket Setup] Socket đã được tạo và lưu vào state.");
+        setSocket(newSocket);
 
-        // Dọn dẹp khi component unmount: Gửi sự kiện rời phòng và ngắt kết nối
         return () => {
-            console.log("[Socket] Dọn dẹp: Rời phòng và ngắt kết nối.");
-            console.log(`[Socket] Phát sự kiện 'leave_meeting_room' với ID: ${id}`);
             newSocket.emit('leave_meeting_room', id);
             newSocket.disconnect();
         };
-    }, [id]); // Chỉ phụ thuộc vào `id`, đảm bảo chỉ chạy lại khi vào một cuộc họp khác
+    }, [id]);
 
-    // [SỬA LỖI] useEffect này chỉ lắng nghe sự kiện khi socket đã sẵn sàng
     useEffect(() => {
-        if (!socket) return; // Chỉ chạy khi socket đã được tạo
-        console.log("[Attendance List Update] Đang thiết lập listener cho 'attendance_list_updated'...");
-        // Lắng nghe sự kiện cập nhật toàn bộ danh sách điểm danh
+        if (!socket) return;
         socket.on('attendance_list_updated', (updatedAttendeesList) => {
-            console.log("%c[Socket] ====> NHẬN ĐƯỢC SỰ KIỆN 'attendance_list_updated' TỪ SERVER <====", "color: blue; font-weight: bold;");
-            console.log("[Socket] Dữ liệu (payload) nhận được (toàn bộ danh sách):", updatedAttendeesList);
-
-            console.log("[Attendance List Update] Bắt đầu cập nhật state meeting...");
             setMeeting(prevMeeting => { 
-                if (!prevMeeting) {
-                    console.log("[Attendance List Update] prevMeeting là null, không cập nhật.");
-                    console.warn("[Socket] Trạng thái 'meeting' trước đó là null, không thể cập nhật danh sách người tham dự.");
-                    return null;
-                }
-
-                console.log("[Socket] Trạng thái 'meeting' TRƯỚC KHI cập nhật:", prevMeeting);
-
-                // Thay thế hoàn toàn danh sách người tham dự
-                const newMeetingState = {
+                if (!prevMeeting) return null;
+                return {
                     ...prevMeeting,
                     attendees: updatedAttendeesList
                 };
-
-                console.log("[Socket] Trạng thái 'meeting' SAU KHI cập nhật:", newMeetingState);
-                return newMeetingState;
             });
-            console.log("[Attendance List Update] Cập nhật state meeting hoàn tất.");
         });
 
-        // Hàm dọn dẹp cho hook này: hủy lắng nghe sự kiện để tránh memory leak
         return () => {
-            console.log("[Attendance List Update] Dọn dẹp: Hủy đăng ký listener 'attendance_list_updated'.");
             socket.off('attendance_list_updated');
         };
-    }, [socket]); // Chỉ phụ thuộc vào `socket`
+    }, [socket]);
 
 
 
     const handleUpdateAttendance = async (userId, status) => {
         const originalMeeting = { ...meeting };
-
-        console.log(`[Attendance Update] Bắt đầu cập nhật điểm danh cho user ${userId} với trạng thái ${status}...`);
-        // Optimistic UI Update
-        console.log("[Attendance Update] Cập nhật UI (Optimistic Update)...");
         const updatedAttendees = meeting.attendees.map(attendee => 
             attendee.user_id === userId ? { ...attendee, status: status } : attendee
         );
@@ -228,14 +175,8 @@ const MeetingDetailPage = () => {
 
         try {
             await apiClient.post(`/meetings/${id}/attendance`, { userId, status });
-            console.log("[Attendance Update] Gọi API thành công.");
-            // Không cần làm gì thêm. Server sẽ phát sự kiện đến tất cả client,
-            // bao gồm cả client này, và UI sẽ được cập nhật qua listener của socket (attendance_list_updated).
         } catch (err) {
-            console.error("[Attendance Update] Lỗi khi gọi API:", err);
             alert('Cập nhật điểm danh thất bại. Đang hoàn tác...');
-            console.log("[Attendance Update] Hoàn tác lại UI...");
-            // Hoàn tác lại nếu có lỗi
             setMeeting(originalMeeting);
         }
     };
