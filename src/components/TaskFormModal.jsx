@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../api/client';
+import { handleViewFile } from '../utils/fileUtils';
 import { DocumentPlusIcon, TrashIcon, XMarkIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 import SearchableMultiSelect from './SearchableMultiSelect';
 import SearchableSelect from './SearchableSelect';
@@ -256,9 +257,9 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                                                     <div className="flex items-center min-w-0">
                                                         <PaperClipIcon className="h-5 w-5 text-gray-500 mr-2 flex-shrink-0" />
                                                         {doc.doc_id ? (
-                                                            <a href={`${apiClient.defaults.baseURL}/files/view?path=${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 truncate hover:underline text-sm">
+                                                            <button type="button" onClick={() => handleViewFile(doc.file_path)} className="text-blue-600 truncate hover:underline text-sm text-left max-w-xs">
                                                                 {doc.doc_name}
-                                                            </a>
+                                                            </button>
                                                         ) : (
                                                             <span className="text-gray-800 truncate text-sm">{doc.doc_name}</span>
                                                         )}

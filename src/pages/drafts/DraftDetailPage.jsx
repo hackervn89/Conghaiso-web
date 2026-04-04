@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { handleViewFile } from '../../utils/fileUtils';
 import DraftStatusTag from '../../components/drafts/DraftStatusTag';
 import CommentModal from '../../components/drafts/CommentModal';
 import { ArrowLeftIcon, PaperClipIcon, ChatBubbleLeftEllipsisIcon, CheckCircleIcon, UserCircleIcon, ClockIcon, TagIcon, InformationCircleIcon, UserGroupIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -110,15 +111,13 @@ const DraftDetailPage = () => {
                         <div className="mt-6 space-y-2">
                             <h4 className="text-sm font-semibold text-gray-600">Tài liệu đính kèm:</h4>
                             {attachments.map((file, index) => (
-                                file.file_path && <a 
+                                file.file_path && <button 
                                     key={index} 
-                                    href={`${apiClient.defaults.baseURL}/files/view?path=${encodeURIComponent(file.file_path)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    onClick={() => handleViewFile(file.file_path)}
                                     className="w-full flex items-center justify-start text-left px-3 py-2 font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
                                         <PaperClipIcon className="h-5 w-5 mr-2 flex-shrink-0" />
                                         <span className="truncate">{file.file_name}</span>
-                                </a>
+                                </button>
                             ))}
                         </div>
                         {canTakeAction && (
