@@ -164,9 +164,10 @@ const MeetingFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             }
             let finalAgenda = [...agenda];
             response.data.files.forEach(uploadedFile => {
-                const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === uploadedFile.name);
+                const docIndex = finalAgenda[currentAgendaIndex].documents.findIndex(d => d.isUploading && d.doc_name === (uploadedFile.originalName || uploadedFile.name));
                 if(docIndex !== -1){
                     finalAgenda[currentAgendaIndex].documents[docIndex].filePath = uploadedFile.filePath;
+                    finalAgenda[currentAgendaIndex].documents[docIndex].doc_name = uploadedFile.name;
                     finalAgenda[currentAgendaIndex].documents[docIndex].isUploading = false;
                 }
             });

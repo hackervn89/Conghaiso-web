@@ -254,11 +254,11 @@ const TaskFormModal = ({ isOpen, onClose, onSave, onDelete, taskData }) => {
                                                     <div className="flex items-center min-w-0">
                                                         <PaperClipIcon className="h-5 w-5 text-gray-500 mr-2 flex-shrink-0" />
                                                         {doc.doc_id ? (
-                                                            <button type="button" onClick={() => handleViewFile(doc.file_path)} className="text-blue-600 truncate hover:underline text-sm text-left max-w-xs">
-                                                                {doc.doc_name}
+                                                            <button type="button" onClick={() => handleViewFile(doc.filePath || doc.file_path)} className="text-blue-600 truncate hover:underline text-sm text-left max-w-xs">
+                                                                {doc.name || doc.doc_name}
                                                             </button>
                                                         ) : (
-                                                            <span className="text-gray-800 truncate text-sm">{doc.doc_name}</span>
+                                                            <span className="text-gray-800 truncate text-sm">{doc.name || doc.doc_name}</span>
                                                         )}
                                                     </div>
                                                     <button type="button" onClick={() => removeDocument(doc.filePath || doc.doc_id)} className="text-red-500 hover:text-red-700 ml-2">
