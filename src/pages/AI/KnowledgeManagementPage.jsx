@@ -1,30 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../api/client';
-import Pagination from '../../components/Pagination'; // Giả sử component này đã tồn tại
-import KnowledgeIngestModal from '../../components/AI/KnowledgeIngestModal'; // Task FEW-02
-import KnowledgeTextIngestModal from '../../components/AI/KnowledgeTextIngestModal'; // Sửa đường dẫn import
-import KnowledgeEditModal from '../../components/AI/KnowledgeEditModal'; // Task FEW-03
+import Pagination from '../../components/Pagination';
+import KnowledgeIngestModal from '../../components/AI/KnowledgeIngestModal';
+import KnowledgeTextIngestModal from '../../components/AI/KnowledgeTextIngestModal';
+import KnowledgeEditModal from '../../components/AI/KnowledgeEditModal';
 
 const KnowledgeManagementPage = () => {
     const [knowledge, setKnowledge] = useState([]);
+    const [sources, setSources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
     const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
-    const [isTextIngestModalOpen, setIsTextIngestModalOpen] = useState(false); // State cho modal mới
+    const [isTextIngestModalOpen, setIsTextIngestModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedKnowledgeId, setSelectedKnowledgeId] = useState(null);
 
     const fetchKnowledge = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const response = await apiClient.get(`/knowledge?page=${page}&limit=15`);
-            setKnowledge(response.data.knowledge || []); // Sửa: Dữ liệu nằm trong key 'knowledge'
+            const [knowledgeRes, sourcesRes] = await Promise.all([
+                apiClient.get(`/knowledge?page=${page}&limit=15`),
+                apiClient.get('/knowledge/sources'),
+            ]);
+
+            setKnowledge(knowledgeRes.data.knowledge || []);
             setPagination({
-                page: response.data.page || 1,
-                pages: response.data.pages || 1,
-                total: response.data.total || 0,
+                page: knowledgeRes.data.page || 1,
+                pages: knowledgeRes.data.pages || 1,
+                total: knowledgeRes.data.total || 0,
             });
+            setSources(sourcesRes.data.sources || []);
             setError(null);
         } catch (err) {
             setError('Không thể tải dữ liệu tri thức.');
@@ -47,7 +53,7 @@ const KnowledgeManagementPage = () => {
             try {
                 await apiClient.delete(`/knowledge/${id}`);
                 alert('Xóa thành công!');
-                fetchKnowledge(pagination.page); // Tải lại trang hiện tại
+                fetchKnowledge(pagination.page);
             } catch (err) {
                 alert('Xóa thất bại.');
                 console.error(err);
@@ -61,14 +67,11 @@ const KnowledgeManagementPage = () => {
     };
 
     const handleModalCloseAndRefresh = () => {
-        const isCreatingNew = isIngestModalOpen || isTextIngestModalOpen; // Kiểm tra xem có phải đang đóng modal tạo mới không
+        const isCreatingNew = isIngestModalOpen || isTextIngestModalOpen;
         setIsIngestModalOpen(false);
         setIsTextIngestModalOpen(false);
         setIsEditModalOpen(false);
         setSelectedKnowledgeId(null);
-
-        // Nếu là tạo mới, quay về trang 1 để xem dữ liệu mới nhất.
-        // Nếu là sửa, chỉ cần tải lại trang hiện tại.
         fetchKnowledge(isCreatingNew ? 1 : pagination.page);
     };
 
@@ -92,7 +95,37 @@ const KnowledgeManagementPage = () => {
                 </div>
             </div>
 
-            {error && <p className="text-red-500">{error}</p>}
+            {error && <p className="text-red-500 mb-4">{error}</p>}
+
+            <div className="bg-white border border-red-100 rounded-xl p-4 mb-5">
+                <h2 className="text-lg font-semibold text-gray-800 mb-3">Nguồn tài liệu đã nạp</h2>
+                {sources.length === 0 ? (
+                    <p className="text-sm text-gray-500">Chưa có nguồn tài liệu nào.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="text-left bg-red-50 text-gray-700">
+                                    <th className="px-3 py-2">Nguồn tài liệu</th>
+                                    <th className="px-3 py-2">Danh mục</th>
+                                    <th className="px-3 py-2">Số chunk</th>
+                                    <th className="px-3 py-2">Lần nạp gần nhất</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sources.map((s, idx) => (
+                                    <tr key={`${s.source_document}-${idx}`} className="border-t">
+                                        <td className="px-3 py-2">{s.source_document}</td>
+                                        <td className="px-3 py-2">{s.category || 'N/A'}</td>
+                                        <td className="px-3 py-2 font-semibold">{s.chunk_count}</td>
+                                        <td className="px-3 py-2">{s.last_ingested_at ? new Date(s.last_ingested_at).toLocaleString('vi-VN') : 'N/A'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
 
             <div className="bg-white shadow-lg rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
@@ -136,7 +169,7 @@ const KnowledgeManagementPage = () => {
                                 <tr>
                                     <td colSpan="5" className="text-center p-10">
                                         <h3 className="text-lg font-semibold text-gray-600">Chưa có mẩu tri thức nào</h3>
-                                        <p className="text-gray-500 mt-1">Hãy thử nạp một tri thức mới để bắt đầu.</p>
+                                        <p className="text-gray-500 mt-1">Hãy nạp văn bản cơ quan để bắt đầu.</p>
                                     </td>
                                 </tr>
                             )}
@@ -146,11 +179,11 @@ const KnowledgeManagementPage = () => {
 
                 {!loading && pagination.pages > 1 && (
                     <div className="p-4 border-t border-gray-200">
-                    <Pagination
+                        <Pagination
                             currentPage={pagination.page}
                             totalPages={pagination.pages}
-                        onPageChange={handlePageChange}
-                    />
+                            onPageChange={handlePageChange}
+                        />
                     </div>
                 )}
             </div>

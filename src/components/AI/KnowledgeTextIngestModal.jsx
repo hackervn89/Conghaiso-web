@@ -1,25 +1,16 @@
 import React, { useState } from 'react';
-import apiClient from '../../api/client'; // Sửa đường dẫn import
+import apiClient from '../../api/client';
 
 const KnowledgeTextIngestModal = ({ isOpen, onClose }) => {
     const [sourceDocument, setSourceDocument] = useState('');
     const [category, setCategory] = useState('');
     const [textContent, setTextContent] = useState('');
+    const [replaceExisting, setReplaceExisting] = useState(true);
     const [status, setStatus] = useState({ loading: false, error: null, success: null });
 
     const handleIngest = async () => {
         if (!sourceDocument.trim() || !textContent.trim()) {
-            setStatus({ ...status, error: 'Vui lòng điền Tên tài liệu gốc và Nội dung văn bản.' });
-            return;
-        }
-
-        // Tách nội dung thành các chunks dựa trên dấu phân cách "---"
-        const chunks = textContent.split(/\n---\n/g)
-            .map(chunk => chunk.trim())
-            .filter(chunk => chunk.length > 0);
-
-        if (chunks.length === 0) {
-            setStatus({ ...status, error: 'Nội dung văn bản không hợp lệ hoặc không có đoạn nào được phân tách.' });
+            setStatus({ loading: false, error: 'Vui lòng điền Tên tài liệu gốc và Nội dung văn bản.', success: null });
             return;
         }
 
@@ -27,14 +18,16 @@ const KnowledgeTextIngestModal = ({ isOpen, onClose }) => {
 
         try {
             await apiClient.post('/knowledge/from-text', {
-                source_document: sourceDocument,
-                category: category,
-                chunks: chunks,
+                source_document: sourceDocument.trim(),
+                category: category.trim(),
+                text: textContent,
+                replaceExisting,
             });
+
             setStatus({ loading: false, error: null, success: 'Nạp tri thức từ văn bản thành công!' });
             setTimeout(() => {
-                onClose(); // Đóng modal và làm mới danh sách
-            }, 1500);
+                onClose();
+            }, 1200);
         } catch (err) {
             const errorMessage = err.response?.data?.message || 'Nạp tri thức thất bại. Vui lòng thử lại.';
             setStatus({ loading: false, error: errorMessage, success: null });
@@ -42,11 +35,11 @@ const KnowledgeTextIngestModal = ({ isOpen, onClose }) => {
         }
     };
 
-    // Reset state khi modal đóng
     const handleClose = () => {
         setSourceDocument('');
         setCategory('');
         setTextContent('');
+        setReplaceExisting(true);
         setStatus({ loading: false, error: null, success: null });
         onClose();
     };
@@ -68,8 +61,19 @@ const KnowledgeTextIngestModal = ({ isOpen, onClose }) => {
                     </div>
                     <div>
                         <label htmlFor="text_content" className="block text-sm font-medium text-gray-700">Nội dung văn bản*</label>
-                        <textarea id="text_content" value={textContent} onChange={(e) => setTextContent(e.target.value)} rows="10" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primaryRed focus:border-primaryRed sm:text-sm" placeholder="Dán toàn bộ nội dung vào đây. Sử dụng dấu --- (ba dấu gạch ngang) trên một dòng riêng để phân tách các đoạn."></textarea>
-                        <p className="mt-2 text-xs text-gray-500">Hướng dẫn: Sử dụng `---` trên một dòng riêng để phân tách các đoạn (chunk) bạn muốn.</p>
+                        <textarea id="text_content" value={textContent} onChange={(e) => setTextContent(e.target.value)} rows="10" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primaryRed focus:border-primaryRed sm:text-sm" placeholder="Dán toàn bộ nội dung vào đây. Hệ thống sẽ tự động chia chunk thông minh."></textarea>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <input
+                            id="replace-existing-text"
+                            type="checkbox"
+                            checked={replaceExisting}
+                            onChange={(e) => setReplaceExisting(e.target.checked)}
+                            className="mt-1"
+                        />
+                        <label htmlFor="replace-existing-text" className="text-sm text-gray-700">
+                            Ghi đè dữ liệu cũ của cùng tên tài liệu để tránh trùng lặp.
+                        </label>
                     </div>
                 </div>
                 {status.loading && <p className="mt-4 text-blue-600">Đang xử lý...</p>}
