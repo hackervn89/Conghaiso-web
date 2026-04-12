@@ -98,7 +98,11 @@ const AdminDocumentsPage = () => {
                 total: response.data.total || 0,
             });
             setStats(response.data.stats || {});
-            setFilterOptions(response.data.filters || filterOptions);
+            setFilterOptions(response.data.filters || {
+                docTypes: [],
+                ingestStatuses: ['pending', 'processing', 'ingested', 'failed'],
+                ocrStatuses: ['pending', 'required', 'done', 'failed'],
+            });
             setError(null);
         } catch (err) {
             setError('Không thể tải danh sách tài liệu hành chính.');
@@ -106,7 +110,7 @@ const AdminDocumentsPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [filters, filterOptions]);
+    }, [filters]);
 
     useEffect(() => {
         fetchDocuments(1, filters);
