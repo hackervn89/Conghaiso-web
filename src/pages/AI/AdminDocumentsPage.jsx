@@ -178,8 +178,30 @@ const AdminDocumentsPage = () => {
         }
     };
 
-    const handleOpenFile = (documentCode) => {
-        window.open(`/api/admin-documents/download/${encodeURIComponent(documentCode)}`, '_blank');
+    const handleOpenFile = async (documentCode, fileName) => {
+        setActionState({ loadingCode: documentCode, message: null, error: null });
+        try {
+            const response = await apiClient.get(`/admin-documents/download/${encodeURIComponent(documentCode)}`, {
+                responseType: 'blob',
+            });
+
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data], {
+                type: response.headers['content-type'] || 'application/pdf',
+            }));
+            const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            if (!newWindow) {
+                window.location.href = blobUrl;
+            }
+
+            window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
+            setActionState({ loadingCode: null, message: null, error: null });
+        } catch (err) {
+            setActionState({
+                loadingCode: null,
+                message: null,
+                error: err.response?.data?.message || `Không thể mở file gốc${fileName ? `: ${fileName}` : '.'}`,
+            });
+        }
     };
 
     const handleImportMetadata = async (event) => {
@@ -464,8 +486,12 @@ const AdminDocumentsPage = () => {
                                                 {doc.file_name ? (
                                                     <div className="space-y-2">
                                                         <p className="text-xs text-gray-700 break-all">{doc.file_name}</p>
-                                                        <button onClick={() => handleOpenFile(doc.document_code)} className="px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-                                                            Xem gốc
+                                                        <button
+                                                            onClick={() => handleOpenFile(doc.document_code, doc.file_name)}
+                                                            disabled={actionState.loadingCode === doc.document_code}
+                                                            className="px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                                                        >
+                                                            {actionState.loadingCode === doc.document_code ? 'Đang mở...' : 'Xem gốc'}
                                                         </button>
                                                     </div>
                                                 ) : (

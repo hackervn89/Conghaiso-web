@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import apiClient from '../../api/client';
-import logoImage from '../../assets/logo.png'; 
+import logoImage from '../../assets/logo.png';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm'; 
+import remarkGfm from 'remark-gfm';
 import trongDongBg from '../../assets/trongdong1.png';
 import { PaperAirplaneIcon, PlusIcon, ChatBubbleLeftRightIcon, TrashIcon, Bars3Icon } from '@heroicons/react/24/solid';
 
@@ -12,6 +12,7 @@ const AiChatPage = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState(null);
+    const [fileOpenState, setFileOpenState] = useState({ loadingHref: null, error: null });
 
     // State cho lịch sử các phiên chat (sidebar)
     const [sessions, setSessions] = useState([]);
@@ -156,6 +157,43 @@ const AiChatPage = () => {
         return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
+    const isProtectedAdminDocLink = (href = '') => href.includes('/api/admin-documents/download/');
+
+    const normalizeApiPath = (href = '') => {
+        try {
+            const parsed = new URL(href, window.location.origin);
+            return `${parsed.pathname}${parsed.search}`;
+        } catch {
+            return href;
+        }
+    };
+
+    const handleOpenProtectedLink = useCallback(async (href) => {
+        const apiPath = normalizeApiPath(href);
+        setFileOpenState({ loadingHref: href, error: null });
+
+        try {
+            const response = await apiClient.get(apiPath, { responseType: 'blob' });
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data], {
+                type: response.headers['content-type'] || 'application/pdf',
+            }));
+
+            const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            if (!newWindow) {
+                window.location.href = blobUrl;
+            }
+
+            window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
+            setFileOpenState({ loadingHref: null, error: null });
+        } catch (error) {
+            console.error('Open protected link failed:', error);
+            setFileOpenState({
+                loadingHref: null,
+                error: error.response?.data?.message || 'Không thể mở văn bản gốc được trích dẫn.',
+            });
+        }
+    }, []);
+
     // Tùy chỉnh cách ReactMarkdown render các thành phần
     const markdownComponents = {
         // Ghi đè cách render thẻ <strong>
@@ -167,6 +205,27 @@ const AiChatPage = () => {
             }
             // Nếu không, render như bình thường
             return <strong {...props}>{props.children}</strong>;
+        },
+        a: ({ href = '', children, ...props }) => {
+            if (!isProtectedAdminDocLink(href)) {
+                return (
+                    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+                        {children}
+                    </a>
+                );
+            }
+
+            const isOpening = fileOpenState.loadingHref === href;
+            return (
+                <button
+                    type="button"
+                    onClick={() => handleOpenProtectedLink(href)}
+                    disabled={isOpening}
+                    className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                    {isOpening ? 'Đang mở văn bản...' : children}
+                </button>
+            );
         },
     };
     return (
@@ -181,9 +240,9 @@ const AiChatPage = () => {
 
             {/* Sidebar lịch sử chat */}
             <aside className={`absolute md:relative top-0 left-0 h-full w-64 bg-gray-50/50 border-r border-red-100 flex flex-col flex-shrink-0 z-30 transform transition-transform duration-300 ease-in-out rounded-l-xl md:rounded-l-xl 
-                             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}> 
-                
-                <div className="p-2 border-b border-red-100 flex-shrink-0"> 
+                             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+
+                <div className="p-2 border-b border-red-100 flex-shrink-0">
                     <button onClick={handleNewChat} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-primaryRed bg-white border border-primaryRed rounded-lg hover:bg-red-50 transition-colors">
                         <PlusIcon className="h-5 w-5" />
                         Trò chuyện mới
@@ -210,8 +269,8 @@ const AiChatPage = () => {
                             </div>
                         ))
                     ) : (
-                         <div className="text-center text-gray-500 p-4 text-sm">
-                            <ChatBubbleLeftRightIcon className="h-8 w-8 mx-auto mb-2 text-gray-400"/>
+                        <div className="text-center text-gray-500 p-4 text-sm">
+                            <ChatBubbleLeftRightIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                             Chưa có cuộc trò chuyện nào.
                         </div>
                     )}
@@ -233,15 +292,15 @@ const AiChatPage = () => {
                 {/* Vùng chứa nội dung chat (scrollable) */}
                 <div className="relative flex-1 min-h-0"> {/* Container chính cho vùng chat, không cuộn */}
                     {/* Lớp nền trống đồng, cố định so với container trên */}
-                    <div 
+                    <div
                         className="absolute inset-0 z-0 pointer-events-none"
-                        style={{ 
-                            backgroundImage: `url(${trongDongBg})`, 
-                            backgroundSize: 'contain', 
-                            backgroundPosition: 'center', 
-                            backgroundRepeat: 'no-repeat', 
+                        style={{
+                            backgroundImage: `url(${trongDongBg})`,
+                            backgroundSize: 'contain',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat',
                             opacity: 0.1
-                        }} 
+                        }}
                     />
                     {/* Container cho tin nhắn, có thể cuộn và nằm trên lớp nền */}
                     <div className="absolute inset-0 overflow-y-auto p-4 z-10">
@@ -262,7 +321,7 @@ const AiChatPage = () => {
                                                     <p className="font-sans whitespace-pre-wrap">{msg.parts[0].text}</p>
                                                 ) : (
                                                     <div className="prose prose-sm max-w-none">
-                                                        <ReactMarkdown 
+                                                        <ReactMarkdown
                                                             remarkPlugins={[remarkGfm]}
                                                             components={markdownComponents}
                                                         >{msg.parts[0].text}</ReactMarkdown>
@@ -293,6 +352,7 @@ const AiChatPage = () => {
 
                 {/* Khu vực nhập liệu (cố định ở dưới) */}
                 <div className="p-4 bg-white md:rounded-br-xl flex-shrink-0">
+                    {fileOpenState.error && <p className="mb-2 text-sm text-red-600">{fileOpenState.error}</p>}
                     <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-3">
                         <div className="relative flex-1">
                             <textarea
